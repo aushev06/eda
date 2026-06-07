@@ -6,6 +6,7 @@ use App\Actions\Auth\StartCustomerLogin;
 use App\Actions\Auth\TooManyOtpRequests;
 use App\Actions\Auth\VerifyCustomerOtp;
 use App\Http\Controllers\Controller;
+use App\Rules\Phone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -24,7 +25,7 @@ class AuthController extends Controller
     public function start(Request $request, StartCustomerLogin $action): RedirectResponse
     {
         $data = $request->validate([
-            'phone' => ['required', 'string', 'min:5', 'max:32'],
+            'phone' => ['required', 'string', new Phone],
         ]);
 
         try {
@@ -59,7 +60,7 @@ class AuthController extends Controller
     public function confirm(Request $request, VerifyCustomerOtp $action): RedirectResponse
     {
         $data = $request->validate([
-            'phone' => ['required', 'string', 'min:5', 'max:32'],
+            'phone' => ['required', 'string', new Phone],
             'code' => ['required', 'string', 'digits:4'],
         ]);
 

@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\LoyaltyAccount;
+use App\Models\LoyaltyTransaction;
+use App\Observers\LoyaltyAccountObserver;
+use App\Observers\LoyaltyTransactionObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +28,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        LoyaltyTransaction::observe(LoyaltyTransactionObserver::class);
+        LoyaltyAccount::observe(LoyaltyAccountObserver::class);
     }
 
     /**

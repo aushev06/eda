@@ -3,6 +3,7 @@
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\Customer\AccountController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
+use App\Http\Controllers\Customer\NotificationsController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PromoController;
 use App\Http\Controllers\TableController;
@@ -41,6 +42,10 @@ Route::middleware('auth:customer')->prefix('account')->name('account.')->group(f
     Route::get('/addresses', [AccountController::class, 'addresses'])->name('addresses');
     Route::post('/addresses', [AccountController::class, 'storeAddress'])->name('addresses.store');
     Route::delete('/addresses/{address}', [AccountController::class, 'destroyAddress'])->name('addresses.destroy');
+
+    Route::get('/notifications', [NotificationsController::class, 'index'])->name('notifications');
+    Route::post('/notifications/read-all', [NotificationsController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationsController::class, 'markRead'])->name('notifications.read');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

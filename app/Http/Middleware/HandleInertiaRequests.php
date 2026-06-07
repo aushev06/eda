@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\CustomerNotification;
 use App\Models\Table;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -48,7 +49,43 @@ class HandleInertiaRequests extends Middleware
                 'dev_otp' => fn () => $request->session()->get('dev_otp'),
             ],
             'table' => fn () => $this->resolveTable($request),
+            'notifications' => fn () => $this->resolveNotifications($request),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+        ];
+    }
+
+    /**
+     * @return array{recent: array<int, array<string, mixed>>, unread_count: int}|null
+     */
+    protected function resolveNotifications(Request $request): ?array
+    {
+        $customer = $request->user('customer');
+        if (! $customer) {
+            return null;
+        }
+
+        $recent = CustomerNotification::query()
+            ->forCustomer($customer->id)
+            ->latest('id')
+            ->limit(10)
+            ->get(['id', 'type', 'title', 'body', 'action_url', 'read_at', 'created_at']);
+
+        $unread = CustomerNotification::query()
+            ->forCustomer($customer->id)
+            ->unread()
+            ->count();
+
+        return [
+            'recent' => $recent->map(fn (CustomerNotification $n) => [
+                'id' => $n->id,
+                'type' => $n->type->value,
+                'title' => $n->title,
+                'body' => $n->body,
+                'action_url' => $n->action_url,
+                'read_at' => $n->read_at?->toIso8601String(),
+                'created_at' => $n->created_at?->toIso8601String(),
+            ])->all(),
+            'unread_count' => $unread,
         ];
     }
 

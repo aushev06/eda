@@ -43,4 +43,9 @@ class Customer extends Model implements AuthenticatableContract
     {
         return $this->hasOne(LoyaltyAccount::class);
     }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(CustomerNotification::class);
+    }
 }

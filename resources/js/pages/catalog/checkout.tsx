@@ -1,6 +1,7 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, CheckCircle2, Gift, ShoppingBag, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { PhoneInput } from '@/components/forms/phone-input';
 import { CartProvider, useCart } from '@/hooks/catalog/use-cart';
 import { formatRub } from '@/lib/format';
 import { store as ordersStore } from '@/routes/orders';
@@ -318,14 +319,11 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
                             error={form.errors.customer_name}
                             placeholder="Иван"
                         />
-                        <Field
-                            label="Телефон"
-                            required
-                            type="tel"
+                        <PhoneInput
                             value={form.data.customer_phone}
                             onChange={(v) => form.setData('customer_phone', v)}
                             error={form.errors.customer_phone}
-                            placeholder="+7 999 123 45 67"
+                            required
                         />
                     </Section>
 

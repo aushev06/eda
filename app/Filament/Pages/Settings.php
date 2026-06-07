@@ -3,6 +3,8 @@
 namespace App\Filament\Pages;
 
 use App\Models\WorkingHour;
+use App\Rules\Phone as PhoneRule;
+use App\Support\Phone;
 use App\Support\Settings as SettingsHelper;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -97,7 +99,16 @@ class Settings extends Page implements HasForms
                             ->icon('heroicon-o-identification')
                             ->schema([
                                 TextInput::make('general.name')->label('Название')->required()->maxLength(255),
-                                TextInput::make('general.phone')->label('Телефон')->tel()->maxLength(64),
+                                TextInput::make('general.phone')
+                                    ->label('Телефон')
+                                    ->tel()
+                                    ->maxLength(64)
+                                    ->placeholder('+7 (999) 123-45-67')
+                                    ->helperText('Российский номер. Любой формат — будет приведён к +7XXXXXXXXXX.')
+                                    ->rules([new PhoneRule])
+                                    ->dehydrateStateUsing(fn (?string $state) => $state === null || $state === ''
+                                        ? null
+                                        : (Phone::normalize($state) ?? $state)),
                                 TextInput::make('general.email')->label('Email')->email()->maxLength(255),
                                 Textarea::make('general.address')->label('Адрес')->rows(2)->columnSpanFull(),
                             ]),

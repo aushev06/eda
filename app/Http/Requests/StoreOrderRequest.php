@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use App\Enums\DeliveryType;
 use App\Enums\PaymentMethod;
+use App\Rules\Phone as PhoneRule;
+use App\Support\Phone;
 use App\Support\Settings;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,6 +32,15 @@ class StoreOrderRequest extends FormRequest
         if (! $this->filled('table_id') && $this->session()->has('table_id')) {
             $this->merge(['table_id' => $this->session()->get('table_id')]);
         }
+
+        // Normalize phone so downstream code stores a consistent +7XXXXXXXXXX
+        // value regardless of how the user typed it.
+        if ($this->filled('customer_phone')) {
+            $normalized = Phone::normalize((string) $this->input('customer_phone'));
+            if ($normalized !== null) {
+                $this->merge(['customer_phone' => $normalized]);
+            }
+        }
     }
 
     /**
@@ -42,7 +53,7 @@ class StoreOrderRequest extends FormRequest
 
         return [
             'customer_name' => ['required', 'string', 'max:255'],
-            'customer_phone' => ['required', 'string', 'max:32'],
+            'customer_phone' => ['required', 'string', new PhoneRule],
             'delivery_type' => ['required', Rule::enum(DeliveryType::class)],
             'payment_method' => ['required', Rule::enum(PaymentMethod::class)],
             'customer_comment' => ['nullable', 'string', 'max:1000'],

@@ -2,6 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { Gift, Hash, ShoppingBag, User, X } from 'lucide-react';
 import { useCart } from '@/hooks/catalog/use-cart';
 import type { Establishment } from '@/types/catalog';
+import { NotificationsBell } from './notifications-bell';
 
 type Props = {
     establishment: Establishment;
@@ -83,6 +84,8 @@ export function SiteHeader({ establishment }: Props) {
                         <Gift className="size-4" />
                         <span className="hidden sm:inline">Бонусы</span>
                     </Link>
+
+                    <NotificationsBell />
 
                     {customer ? (
                         <Link

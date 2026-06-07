@@ -4,6 +4,7 @@ namespace App\Actions\Auth;
 
 use App\Models\Customer;
 use App\Models\CustomerOtp;
+use App\Support\Phone;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -69,15 +70,6 @@ class StartCustomerLogin
 
     public function normalize(string $phone): string
     {
-        $digits = preg_replace('/\D+/', '', $phone) ?? '';
-        if ($digits === '') {
-            return '';
-        }
-        // Russia: 8XXXXXXXXXX → +7XXXXXXXXXX; 7XXXXXXXXXX → +7XXXXXXXXXX.
-        if (str_starts_with($digits, '8') && strlen($digits) === 11) {
-            $digits = '7'.substr($digits, 1);
-        }
-
-        return '+'.$digits;
+        return Phone::normalize($phone) ?? '';
     }
 }

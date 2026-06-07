@@ -1,22 +1,24 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, Gift, LogOut, MapPin, ShoppingBag, User } from 'lucide-react';
+import { ArrowLeft, Bell, Gift, LogOut, MapPin, ShoppingBag, User } from 'lucide-react';
 import { ReactNode } from 'react';
 
 type Props = {
     title: string;
-    active: 'profile' | 'orders' | 'addresses' | 'bonuses';
+    active: 'profile' | 'orders' | 'addresses' | 'bonuses' | 'notifications';
     children: ReactNode;
 };
 
 type SharedAuth = {
     auth: { customer: { name: string; phone: string } | null };
     flash?: { status?: string | null };
+    notifications?: { unread_count: number } | null;
 };
 
 export function AccountLayout({ title, active, children }: Props) {
     const { props } = usePage<SharedAuth>();
     const customer = props.auth.customer;
     const status = props.flash?.status ?? null;
+    const unread = props.notifications?.unread_count ?? 0;
 
     if (!customer) {
         return null;
@@ -55,6 +57,14 @@ export function AccountLayout({ title, active, children }: Props) {
                             <NavLink href="/account/bonuses" active={active === 'bonuses'} icon={<Gift className="size-4" />}>
                                 Бонусы
                             </NavLink>
+                            <NavLink
+                                href="/account/notifications"
+                                active={active === 'notifications'}
+                                icon={<Bell className="size-4" />}
+                                badge={unread > 0 ? unread : undefined}
+                            >
+                                Уведомления
+                            </NavLink>
                             <NavLink href="/account/addresses" active={active === 'addresses'} icon={<MapPin className="size-4" />}>
                                 Адреса
                             </NavLink>
@@ -91,11 +101,13 @@ function NavLink({
     active,
     icon,
     children,
+    badge,
 }: {
     href: string;
     active: boolean;
     icon: ReactNode;
     children: ReactNode;
+    badge?: number;
 }) {
     return (
         <Link
@@ -105,7 +117,16 @@ function NavLink({
             }`}
         >
             {icon}
-            {children}
+            <span className="flex-1">{children}</span>
+            {badge !== undefined && (
+                <span
+                    className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-xs font-bold ${
+                        active ? 'bg-amber-400 text-stone-900' : 'bg-amber-400 text-stone-900'
+                    }`}
+                >
+                    {badge > 99 ? '99+' : badge}
+                </span>
+            )}
         </Link>
     );
 }

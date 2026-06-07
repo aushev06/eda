@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Promo\ApplyPromoCode;
+use App\Rules\Phone as PhoneRule;
+use App\Support\Phone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -14,14 +16,14 @@ class PromoController extends Controller
         $data = $request->validate([
             'code' => ['required', 'string', 'max:64'],
             'subtotal' => ['required', 'numeric', 'min:0'],
-            'customer_phone' => ['nullable', 'string', 'max:32'],
+            'customer_phone' => ['nullable', 'string', new PhoneRule],
         ]);
 
         try {
             $applied = $action->handle(
                 code: $data['code'],
                 subtotal: (float) $data['subtotal'],
-                customerPhone: $data['customer_phone'] ?? null,
+                customerPhone: isset($data['customer_phone']) ? Phone::normalize($data['customer_phone']) : null,
             );
         } catch (ValidationException $e) {
             return response()->json([
