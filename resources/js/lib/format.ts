@@ -6,6 +6,10 @@ const rubFormatter = new Intl.NumberFormat('ru-RU', {
 
 export function formatRub(value: number | string): string {
     const n = typeof value === 'string' ? Number(value) : value;
-    if (!Number.isFinite(n)) return '—';
+
+    if (!Number.isFinite(n)) {
+return '—';
+}
+
     return rubFormatter.format(n);
 }

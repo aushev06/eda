@@ -1,4 +1,5 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { ReactNode} from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { CartLine, CartLineModifier, Product } from '@/types/catalog';
 
 const STORAGE_KEY = 'fidele.cart.v1';
@@ -34,11 +35,19 @@ function makeLineId(productId: number, modifiers: CartLineModifier[]): string {
 }
 
 function loadFromStorage(): CartLine[] {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === 'undefined') {
+return [];
+}
+
     try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
-        if (!raw) return [];
+
+        if (!raw) {
+return [];
+}
+
         const parsed = JSON.parse(raw);
+
         return Array.isArray(parsed) ? (parsed as CartLine[]) : [];
     } catch {
         return [];
@@ -53,7 +62,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const [isOpen, setOpen] = useState(false);
 
     useEffect(() => {
-        if (typeof window === 'undefined') return;
+        if (typeof window === 'undefined') {
+return;
+}
+
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
     }, [lines]);
 
@@ -63,9 +75,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         setLines((prev) => {
             const existing = prev.find((l) => l.id === id);
+
             if (existing) {
                 return prev.map((l) => (l.id === id ? { ...l, quantity: l.quantity + quantity } : l));
             }
+
             return [
                 ...prev,
                 {
@@ -86,7 +100,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const setQuantity = useCallback((id: string, quantity: number) => {
         setLines((prev) => {
-            if (quantity <= 0) return prev.filter((l) => l.id !== id);
+            if (quantity <= 0) {
+return prev.filter((l) => l.id !== id);
+}
+
             return prev.map((l) => (l.id === id ? { ...l, quantity } : l));
         });
     }, []);
@@ -102,6 +119,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (typeof window !== 'undefined') {
             window.localStorage.removeItem(STORAGE_KEY);
         }
+
         setLines([]);
         setOpen(false);
     }, []);
@@ -109,10 +127,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const { count, subtotal } = useMemo(() => {
         let c = 0;
         let s = 0;
+
         for (const l of lines) {
             c += l.quantity;
             s += (l.unit_price + l.modifiers_total_per_unit) * l.quantity;
         }
+
         return { count: c, subtotal: s };
     }, [lines]);
 
@@ -137,8 +157,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart(): CartContextValue {
     const ctx = useContext(CartContext);
+
     if (!ctx) {
         throw new Error('useCart must be used inside <CartProvider>');
     }
+
     return ctx;
 }

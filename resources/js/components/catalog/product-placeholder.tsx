@@ -1,3 +1,5 @@
+import type {
+    LucideIcon} from 'lucide-react';
 import {
     Beef,
     Beer,
@@ -12,7 +14,6 @@ import {
     Fish,
     GlassWater,
     IceCream,
-    LucideIcon,
     Pizza,
     Salad,
     Sandwich,

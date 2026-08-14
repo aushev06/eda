@@ -25,31 +25,45 @@ export function StoryViewer({ groups, startGroupIndex, onClose }: Props) {
     const tickRef = useRef<number | null>(null);
 
     const durationMs = useMemo(() => {
-        if (!story) return FALLBACK_PHOTO_MS;
+        if (!story) {
+return FALLBACK_PHOTO_MS;
+}
+
         return story.duration_ms || FALLBACK_PHOTO_MS;
     }, [story]);
 
     const goNext = useCallback(() => {
         setProgress(0);
-        if (!group) return;
+
+        if (!group) {
+return;
+}
+
         if (storyIndex < group.stories.length - 1) {
             setStoryIndex((i) => i + 1);
+
             return;
         }
+
         if (groupIndex < groups.length - 1) {
             setGroupIndex((i) => i + 1);
             setStoryIndex(0);
+
             return;
         }
+
         onClose();
     }, [group, storyIndex, groupIndex, groups.length, onClose]);
 
     const goPrev = useCallback(() => {
         setProgress(0);
+
         if (storyIndex > 0) {
             setStoryIndex((i) => i - 1);
+
             return;
         }
+
         if (groupIndex > 0) {
             const prev = groups[groupIndex - 1];
             setGroupIndex((i) => i - 1);
@@ -60,14 +74,18 @@ export function StoryViewer({ groups, startGroupIndex, onClose }: Props) {
     // Photo timer: advance progress on a fixed tick. Videos drive their own
     // progress from the timeupdate event below.
     useEffect(() => {
-        if (!story || isVideo || paused) return;
+        if (!story || isVideo || paused) {
+return;
+}
 
         tickRef.current = window.setInterval(() => {
             setProgress((p) => {
                 const next = p + (TICK_MS / durationMs) * 100;
+
                 if (next >= 100) {
                     return 100;
                 }
+
                 return next;
             });
         }, TICK_MS);
@@ -95,7 +113,11 @@ export function StoryViewer({ groups, startGroupIndex, onClose }: Props) {
     // Sync video play/pause state.
     useEffect(() => {
         const el = videoRef.current;
-        if (!el) return;
+
+        if (!el) {
+return;
+}
+
         if (paused) {
             el.pause();
         } else {
@@ -108,11 +130,20 @@ export function StoryViewer({ groups, startGroupIndex, onClose }: Props) {
     // Keyboard navigation.
     useEffect(() => {
         function onKey(e: KeyboardEvent) {
-            if (e.key === 'Escape') onClose();
-            if (e.key === 'ArrowRight') goNext();
-            if (e.key === 'ArrowLeft') goPrev();
+            if (e.key === 'Escape') {
+onClose();
+}
+
+            if (e.key === 'ArrowRight') {
+goNext();
+}
+
+            if (e.key === 'ArrowLeft') {
+goPrev();
+}
         }
         window.addEventListener('keydown', onKey);
+
         return () => window.removeEventListener('keydown', onKey);
     }, [onClose, goNext, goPrev]);
 
@@ -127,19 +158,27 @@ export function StoryViewer({ groups, startGroupIndex, onClose }: Props) {
         setPaused(false);
         const start = touchRef.current;
         touchRef.current = null;
-        if (!start) return;
+
+        if (!start) {
+return;
+}
+
         const t = e.changedTouches[0];
         const dx = t.clientX - start.x;
         const dy = t.clientY - start.y;
         const dt = Date.now() - start.t;
+
         if (Math.abs(dy) > Math.abs(dx) && dy > 80) {
             onClose();
+
             return;
         }
+
         if (Math.abs(dx) > 60 && dt < 500) {
             if (dx < 0) {
                 // swipe left → next group
                 setProgress(0);
+
                 if (groupIndex < groups.length - 1) {
                     setGroupIndex((i) => i + 1);
                     setStoryIndex(0);
@@ -149,6 +188,7 @@ export function StoryViewer({ groups, startGroupIndex, onClose }: Props) {
             } else {
                 // swipe right → prev group
                 setProgress(0);
+
                 if (groupIndex > 0) {
                     setGroupIndex((i) => i - 1);
                     setStoryIndex(0);
@@ -157,11 +197,16 @@ export function StoryViewer({ groups, startGroupIndex, onClose }: Props) {
         }
     }
 
-    if (!group || !story) return null;
+    if (!group || !story) {
+return null;
+}
 
     function onTapZone(side: 'left' | 'right') {
-        if (side === 'left') goPrev();
-        else goNext();
+        if (side === 'left') {
+goPrev();
+} else {
+goNext();
+}
     }
 
     return (
@@ -252,6 +297,7 @@ export function StoryViewer({ groups, startGroupIndex, onClose }: Props) {
                             muted
                             onTimeUpdate={(e) => {
                                 const el = e.currentTarget;
+
                                 if (el.duration > 0) {
                                     setProgress((el.currentTime / el.duration) * 100);
                                 }

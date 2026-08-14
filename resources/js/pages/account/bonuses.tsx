@@ -126,6 +126,7 @@ export default function AccountBonuses({
                     <ul className="space-y-2 text-sm">
                         {all_levels.map((level) => {
                             const isCurrent = current_level?.name === level.name;
+
                             return (
                                 <li
                                     key={level.id}
@@ -161,6 +162,7 @@ export default function AccountBonuses({
                                 const meta = TYPE_META[tx.type];
                                 const Icon = meta.icon;
                                 const amount = Number(tx.amount);
+
                                 return (
                                     <li key={tx.id} className="flex items-start justify-between gap-3 py-3">
                                         <div className="flex gap-3">
@@ -207,5 +209,6 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function formatBonuses(value: number): string {
     const formatted = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.abs(value));
+
     return `${formatted} б.`;
 }

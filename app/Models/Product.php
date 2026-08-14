@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Station;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,6 +28,7 @@ class Product extends Model
         'is_active',
         'in_stop_list',
         'sort_order',
+        'station',
     ];
 
     /** @var array<int, string> */
@@ -41,7 +43,16 @@ class Product extends Model
             'is_active' => 'boolean',
             'in_stop_list' => 'boolean',
             'sort_order' => 'integer',
+            'station' => Station::class,
         ];
+    }
+
+    /**
+     * Station this product is prepared at: explicit override or the category default.
+     */
+    public function resolvedStation(): Station
+    {
+        return $this->station ?? $this->category?->station ?? Station::Kitchen;
     }
 
     /**

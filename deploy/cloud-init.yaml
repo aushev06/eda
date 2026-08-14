@@ -1,0 +1,298 @@
+#cloud-config
+# Fidele — single-node provisioning (Ubuntu 24.04 LTS)
+# Stack: nginx + PHP 8.5-FPM + MySQL 8 + Redis + Reverb + queue worker + scheduler
+#
+# ПЕРЕД ЗАПУСКОМ замени: __SSH_KEY__, __DOMAIN__, __EMAIL__, __REPO__,
+# __DB_PASS__, __REVERB_KEY__, __REVERB_SECRET__
+
+hostname: fidele-web-01
+timezone: Europe/Moscow
+package_update: true
+package_upgrade: true
+
+users:
+  - name: deploy
+    groups: [sudo, www-data]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - __SSH_KEY__
+
+apt:
+  sources:
+    ondrej-php:
+      source: "ppa:ondrej/php"
+
+packages:
+  - nginx
+  - mysql-server
+  - redis-server
+  - git
+  - unzip
+  - curl
+  - ufw
+  - fail2ban
+  - certbot
+  - python3-certbot-nginx
+  - php8.5-fpm
+  - php8.5-cli
+  - php8.5-mysql
+  - php8.5-redis
+  - php8.5-mbstring
+  - php8.5-xml
+  - php8.5-curl
+  - php8.5-zip
+  - php8.5-gd
+  - php8.5-bcmath
+  - php8.5-intl
+
+write_files:
+  # ---------------------------------------------------------------- nginx
+  - path: /etc/nginx/sites-available/fidele
+    content: |
+      server {
+          listen 80;
+          listen [::]:80;
+          server_name __DOMAIN__;
+          root /var/www/fidele/current/public;
+
+          index index.php;
+          charset utf-8;
+          client_max_body_size 32M;
+
+          add_header X-Frame-Options "SAMEORIGIN";
+          add_header X-Content-Type-Options "nosniff";
+
+          # Reverb (WebSockets) — Echo стучится в /app и /apps
+          location ~ ^/(app|apps) {
+              proxy_pass http://127.0.0.1:8080;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection "upgrade";
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_read_timeout 60s;
+          }
+
+          location / {
+              try_files $uri $uri/ /index.php?$query_string;
+          }
+
+          location ~ \.php$ {
+              fastcgi_pass unix:/run/php/php8.5-fpm.sock;
+              fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+              fastcgi_param DOCUMENT_ROOT $realpath_root;
+              include fastcgi_params;
+              fastcgi_hide_header X-Powered-By;
+          }
+
+          location ~ /\.(?!well-known).* { deny all; }
+          location = /favicon.ico { access_log off; log_not_found off; }
+          location = /robots.txt  { access_log off; log_not_found off; }
+
+          gzip on;
+          gzip_types text/css application/javascript application/json image/svg+xml;
+          gzip_min_length 1024;
+      }
+
+  # ------------------------------------------------------------- php-fpm
+  - path: /etc/php/8.5/fpm/conf.d/99-fidele.ini
+    content: |
+      memory_limit = 512M
+      upload_max_filesize = 32M
+      post_max_size = 32M
+      max_execution_time = 60
+      expose_php = Off
+      opcache.enable = 1
+      opcache.memory_consumption = 256
+      opcache.max_accelerated_files = 20000
+      opcache.validate_timestamps = 0
+      opcache.jit = tracing
+      opcache.jit_buffer_size = 128M
+
+  # ------------------------------------------------------- systemd units
+  - path: /etc/systemd/system/fidele-queue.service
+    content: |
+      [Unit]
+      Description=Fidele queue worker
+      After=network.target mysql.service
+
+      [Service]
+      User=deploy
+      Group=www-data
+      Restart=always
+      RestartSec=3
+      WorkingDirectory=/var/www/fidele/current
+      ExecStart=/usr/bin/php artisan queue:work --queue=default --sleep=3 --tries=3 --max-time=3600
+      ExecStop=/usr/bin/php artisan queue:restart
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/fidele-reverb.service
+    content: |
+      [Unit]
+      Description=Fidele Reverb WebSocket server
+      After=network.target
+
+      [Service]
+      User=deploy
+      Group=www-data
+      Restart=always
+      RestartSec=3
+      WorkingDirectory=/var/www/fidele/current
+      ExecStart=/usr/bin/php artisan reverb:start --host=127.0.0.1 --port=8080
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/cron.d/fidele-scheduler
+    content: |
+      * * * * * deploy cd /var/www/fidele/current && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
+
+  # ----------------------------------------------------------------- env
+  - path: /var/www/fidele/shared/.env
+    owner: deploy:www-data
+    permissions: '0640'
+    content: |
+      APP_NAME=Fidele
+      APP_ENV=production
+      APP_KEY=
+      APP_DEBUG=false
+      APP_URL=https://__DOMAIN__
+
+      APP_LOCALE=ru
+      APP_FALLBACK_LOCALE=en
+      APP_FAKER_LOCALE=ru_RU
+
+      LOG_CHANNEL=stack
+      LOG_STACK=daily
+      LOG_LEVEL=warning
+
+      DB_CONNECTION=mysql
+      DB_HOST=127.0.0.1
+      DB_PORT=3306
+      DB_DATABASE=fidele
+      DB_USERNAME=fidele
+      DB_PASSWORD=__DB_PASS__
+
+      SESSION_DRIVER=redis
+      SESSION_LIFETIME=120
+      SESSION_DOMAIN=.__DOMAIN__
+      SESSION_SECURE_COOKIE=true
+
+      CACHE_STORE=redis
+      QUEUE_CONNECTION=database
+      FILESYSTEM_DISK=local
+
+      REDIS_CLIENT=phpredis
+      REDIS_HOST=127.0.0.1
+      REDIS_PORT=6379
+      REDIS_PASSWORD=null
+
+      BROADCAST_CONNECTION=reverb
+      REVERB_APP_ID=702130
+      REVERB_APP_KEY=__REVERB_KEY__
+      REVERB_APP_SECRET=__REVERB_SECRET__
+      REVERB_HOST=__DOMAIN__
+      REVERB_PORT=443
+      REVERB_SCHEME=https
+      REVERB_SERVER_HOST=127.0.0.1
+      REVERB_SERVER_PORT=8080
+
+      VITE_APP_NAME="${APP_NAME}"
+      VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+      VITE_REVERB_HOST="${REVERB_HOST}"
+      VITE_REVERB_PORT="${REVERB_PORT}"
+      VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+
+      MAIL_MAILER=log
+      MAIL_FROM_ADDRESS="noreply@__DOMAIN__"
+      MAIL_FROM_NAME="${APP_NAME}"
+
+  # -------------------------------------------------------- deploy script
+  - path: /usr/local/bin/fidele-deploy
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      # Деплой новой версии: fidele-deploy [branch]
+      set -euo pipefail
+      BRANCH="${1:-master}"
+      BASE=/var/www/fidele
+      REL="$BASE/releases/$(date +%Y%m%d%H%M%S)"
+
+      git clone --depth 1 --branch "$BRANCH" __REPO__ "$REL"
+      ln -sfn "$BASE/shared/.env" "$REL/.env"
+      rm -rf "$REL/storage"
+      ln -sfn "$BASE/shared/storage" "$REL/storage"
+
+      cd "$REL"
+      composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+      npm ci
+      npm run build
+      rm -rf node_modules
+
+      php artisan migrate --force
+      php artisan storage:link
+      php artisan optimize        # config + route + view + events cache
+      php artisan filament:optimize
+
+      chown -R deploy:www-data "$REL"
+      chmod -R ug+rw "$BASE/shared/storage" "$REL/bootstrap/cache"
+
+      ln -sfn "$REL" "$BASE/current"
+
+      sudo systemctl reload php8.5-fpm
+      sudo systemctl restart fidele-queue fidele-reverb
+
+      # держим 5 последних релизов
+      ls -1dt "$BASE"/releases/* | tail -n +6 | xargs -r rm -rf
+      echo "deployed: $REL"
+
+runcmd:
+  # --- Node.js 22 (нужен только для vite build)
+  - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  - apt-get install -y nodejs
+
+  # --- Composer
+  - curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php
+  - php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer
+  - rm /tmp/composer-setup.php
+
+  # --- MySQL: база + пользователь
+  - mysql -e "CREATE DATABASE IF NOT EXISTS fidele CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+  - mysql -e "CREATE USER IF NOT EXISTS 'fidele'@'127.0.0.1' IDENTIFIED BY '__DB_PASS__';"
+  - mysql -e "GRANT ALL PRIVILEGES ON fidele.* TO 'fidele'@'127.0.0.1'; FLUSH PRIVILEGES;"
+
+  # --- Структура каталогов
+  - mkdir -p /var/www/fidele/{releases,shared/storage/{app/public,framework/{cache/data,sessions,testing,views},logs}}
+  - chown -R deploy:www-data /var/www/fidele
+  - chmod -R ug+rwx /var/www/fidele/shared/storage
+
+  # --- nginx
+  - rm -f /etc/nginx/sites-enabled/default
+  - ln -sfn /etc/nginx/sites-available/fidele /etc/nginx/sites-enabled/fidele
+  - systemctl reload nginx
+
+  # --- Первый деплой
+  - sudo -u deploy -H fidele-deploy master
+  - sudo -u deploy -H php /var/www/fidele/current/artisan key:generate --force
+  - sudo -u deploy -H php /var/www/fidele/current/artisan config:cache
+
+  # --- Сервисы
+  - systemctl daemon-reload
+  - systemctl enable --now fidele-queue fidele-reverb
+  - systemctl enable --now redis-server
+
+  # --- Firewall
+  - ufw allow OpenSSH
+  - ufw allow 'Nginx Full'
+  - ufw --force enable
+
+  # --- TLS (после того как DNS указывает на этот IP)
+  - certbot --nginx -d __DOMAIN__ --non-interactive --agree-tos -m __EMAIL__ --redirect
+
+final_message: "Fidele готов за $UPTIME секунд. https://__DOMAIN__"

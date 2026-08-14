@@ -15,16 +15,22 @@ export function digitsOnly(raw: string): string {
  * or null if it can't be salvaged into a valid Russian number.
  */
 export function normalizePhone(raw: string | null | undefined): string | null {
-    if (!raw) return null;
+    if (!raw) {
+return null;
+}
+
     let digits = digitsOnly(raw);
+
     if (digits.length === 10) {
         digits = '7' + digits;
     } else if (digits.length === 11 && digits.startsWith('8')) {
         digits = '7' + digits.slice(1);
     }
+
     if (digits.length !== 11 || !digits.startsWith('7')) {
         return null;
     }
+
     return '+' + digits;
 }
 
@@ -39,30 +45,56 @@ export function isValidPhone(raw: string | null | undefined): boolean {
  */
 export function formatPhoneMask(raw: string): string {
     let d = digitsOnly(raw);
-    if (d.length === 0) return '';
+
+    if (d.length === 0) {
+return '';
+}
 
     // Rewrite leading "8" to "7" so the visible mask always starts with +7.
-    if (d.startsWith('8')) d = '7' + d.slice(1);
+    if (d.startsWith('8')) {
+d = '7' + d.slice(1);
+}
 
     // If user starts typing without a country code, assume Russia.
-    if (!d.startsWith('7')) d = '7' + d;
+    if (!d.startsWith('7')) {
+d = '7' + d;
+}
 
     // Cap at 11 digits total (1 country + 10 national).
     d = d.slice(0, 11);
 
     const national = d.slice(1);
     let out = '+7';
+
     if (national.length === 0) {
         return out + ' ';
     }
+
     out += ' (' + national.slice(0, 3);
-    if (national.length < 3) return out;
+
+    if (national.length < 3) {
+return out;
+}
+
     out += ')';
-    if (national.length === 3) return out;
+
+    if (national.length === 3) {
+return out;
+}
+
     out += ' ' + national.slice(3, 6);
-    if (national.length <= 6) return out;
+
+    if (national.length <= 6) {
+return out;
+}
+
     out += '-' + national.slice(6, 8);
-    if (national.length <= 8) return out;
+
+    if (national.length <= 8) {
+return out;
+}
+
     out += '-' + national.slice(8, 10);
+
     return out;
 }

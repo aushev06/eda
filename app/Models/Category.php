@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Station;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,7 @@ class Category extends Model
         'name',
         'slug',
         'sort_order',
+        'station',
         'is_active',
     ];
 
@@ -24,6 +26,7 @@ class Category extends Model
         return [
             'is_active' => 'boolean',
             'sort_order' => 'integer',
+            'station' => Station::class,
         ];
     }
 

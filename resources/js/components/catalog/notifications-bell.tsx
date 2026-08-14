@@ -16,8 +16,10 @@ export function NotificationsBell() {
     function onClick() {
         if (!auth.customer) {
             router.visit('/account/login');
+
             return;
         }
+
         setOpen(true);
     }
 

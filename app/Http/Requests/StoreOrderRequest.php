@@ -55,7 +55,11 @@ class StoreOrderRequest extends FormRequest
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_phone' => ['required', 'string', new PhoneRule],
             'delivery_type' => ['required', Rule::enum(DeliveryType::class)],
-            'payment_method' => ['required', Rule::enum(PaymentMethod::class)],
+            'payment_method' => ['required', Rule::in([
+                PaymentMethod::Cash->value,
+                PaymentMethod::CardOnline->value,
+                PaymentMethod::CardCourier->value,
+            ])],
             'customer_comment' => ['nullable', 'string', 'max:1000'],
             'promo_code' => ['nullable', 'string', 'max:64'],
             'bonus_to_use' => ['nullable', 'numeric', 'min:0'],

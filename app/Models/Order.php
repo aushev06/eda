@@ -3,14 +3,17 @@
 namespace App\Models;
 
 use App\Enums\DeliveryType;
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use Database\Factories\OrderFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
@@ -19,6 +22,7 @@ class Order extends Model
 
     protected $fillable = [
         'number',
+        'source',
         'customer_id',
         'courier_id',
         'delivery_zone_id',
@@ -47,6 +51,8 @@ class Order extends Model
         'total',
         'customer_comment',
         'scheduled_for',
+        'opened_at',
+        'paid_at',
         'accepted_at',
         'ready_at',
         'delivered_at',
@@ -60,6 +66,7 @@ class Order extends Model
     {
         return [
             'status' => OrderStatus::class,
+            'source' => OrderSource::class,
             'delivery_type' => DeliveryType::class,
             'payment_method' => PaymentMethod::class,
             'payment_status' => PaymentStatus::class,
@@ -73,6 +80,8 @@ class Order extends Model
             'delivery_latitude' => 'decimal:7',
             'delivery_longitude' => 'decimal:7',
             'scheduled_for' => 'datetime',
+            'opened_at' => 'datetime',
+            'paid_at' => 'datetime',
             'accepted_at' => 'datetime',
             'ready_at' => 'datetime',
             'delivered_at' => 'datetime',
@@ -115,6 +124,27 @@ class Order extends Model
         return $this->hasMany(OrderStatusEvent::class)->orderBy('created_at');
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(OrderPayment::class);
+    }
+
+    /**
+     * Change owed to the guest: cash received beyond what cash covered on the
+     * bill. Card tenders are exact and never produce change.
+     */
+    public function changeDue(): float
+    {
+        return (float) $this->payments
+            ->where('method', PaymentMethod::Cash)
+            ->sum(fn (OrderPayment $p) => (float) ($p->received_amount ?? $p->amount) - (float) $p->amount);
+    }
+
+    /**
+     * Recompute money fields from the live (non-voided) line items.
+     * Voided items stay in the table for the shift report but never count
+     * toward what the guest pays.
+     */
     public function recalculateTotals(): void
     {
         $this->loadMissing('items.modifiers');
@@ -123,6 +153,9 @@ class Order extends Model
         $modifiersTotal = 0;
 
         foreach ($this->items as $item) {
+            if ($item->voided_at !== null) {
+                continue;
+            }
             $subtotal += (float) $item->unit_price * $item->quantity;
             $modifiersTotal += (float) $item->modifiers_total;
         }
@@ -130,5 +163,39 @@ class Order extends Model
         $this->subtotal = $subtotal;
         $this->modifiers_total = $modifiersTotal;
         $this->total = $subtotal + $modifiersTotal + (float) $this->delivery_fee - (float) $this->discount_total;
+    }
+
+    /**
+     * The open table check for a dine-in POS table, if one exists: a pos
+     * dine-in order still being served and not yet paid.
+     */
+    public function scopeOpenTableCheck(Builder $query, int $tableId): Builder
+    {
+        return $query
+            ->where('table_id', $tableId)
+            ->where('source', OrderSource::Pos)
+            ->where('delivery_type', DeliveryType::DineIn)
+            ->whereIn('status', [OrderStatus::Accepted, OrderStatus::Preparing])
+            ->where('payment_status', PaymentStatus::Pending);
+    }
+
+    /**
+     * Whether this order is an open, unpaid dine-in POS table check.
+     */
+    public function isOpenTableCheck(): bool
+    {
+        return $this->source === OrderSource::Pos
+            && $this->delivery_type === DeliveryType::DineIn
+            && $this->payment_status === PaymentStatus::Pending
+            && in_array($this->status, [OrderStatus::Accepted, OrderStatus::Preparing], true);
+    }
+
+    public static function generateNumber(): string
+    {
+        do {
+            $candidate = 'A-'.Str::upper(Str::random(6));
+        } while (static::query()->where('number', $candidate)->exists());
+
+        return $candidate;
     }
 }

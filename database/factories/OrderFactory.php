@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\DeliveryType;
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
@@ -34,7 +35,11 @@ class OrderFactory extends Factory
             'customer_id' => $customer->id,
             'status' => OrderStatus::New,
             'delivery_type' => $deliveryType,
-            'payment_method' => fake()->randomElement(PaymentMethod::cases()),
+            'payment_method' => fake()->randomElement([
+                PaymentMethod::Cash,
+                PaymentMethod::CardOnline,
+                PaymentMethod::CardCourier,
+            ]),
             'payment_status' => PaymentStatus::Pending,
             'customer_name' => $customer->name,
             'customer_phone' => $customer->phone,
@@ -54,5 +59,25 @@ class OrderFactory extends Factory
     public function status(OrderStatus $status): static
     {
         return $this->state(fn () => ['status' => $status]);
+    }
+
+    public function pos(): static
+    {
+        return $this->state(fn () => [
+            'source' => OrderSource::Pos,
+            'status' => OrderStatus::Accepted,
+            'accepted_at' => now(),
+            'customer_id' => null,
+            'customer_name' => 'Гость',
+            'customer_phone' => '',
+            'payment_method' => PaymentMethod::Cash,
+            'payment_status' => PaymentStatus::Paid,
+            'delivery_type' => DeliveryType::Pickup,
+            'delivery_fee' => 0,
+            'delivery_street' => null,
+            'delivery_apartment' => null,
+            'delivery_entrance' => null,
+            'delivery_floor' => null,
+        ]);
     }
 }

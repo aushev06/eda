@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\Station;
 use App\Models\Category;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -22,6 +23,7 @@ class CategoryFactory extends Factory
             'name' => Str::title($name),
             'slug' => Str::slug($name).'-'.fake()->unique()->numberBetween(1, 99999),
             'sort_order' => fake()->numberBetween(0, 100),
+            'station' => Station::Kitchen,
             'is_active' => true,
         ];
     }
@@ -29,5 +31,10 @@ class CategoryFactory extends Factory
     public function inactive(): static
     {
         return $this->state(fn () => ['is_active' => false]);
+    }
+
+    public function bar(): static
+    {
+        return $this->state(fn () => ['station' => Station::Bar]);
     }
 }

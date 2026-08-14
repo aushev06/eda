@@ -37,20 +37,30 @@ export function NotificationsDrawer({ open, onClose, items, unreadCount }: Props
     }, []);
 
     useEffect(() => {
-        if (!open) return;
+        if (!open) {
+return;
+}
+
         function onKey(e: KeyboardEvent) {
-            if (e.key === 'Escape') onClose();
+            if (e.key === 'Escape') {
+onClose();
+}
         }
         window.addEventListener('keydown', onKey);
+
         return () => window.removeEventListener('keydown', onKey);
     }, [open, onClose]);
 
     // Lock body scroll while the drawer is open so the background doesn't
     // shift behind the overlay.
     useEffect(() => {
-        if (!open) return;
+        if (!open) {
+return;
+}
+
         const original = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
+
         return () => {
             document.body.style.overflow = original;
         };
@@ -72,13 +82,16 @@ export function NotificationsDrawer({ open, onClose, items, unreadCount }: Props
                 { preserveScroll: true, preserveState: true, only: ['notifications'] },
             );
         }
+
         if (item.action_url) {
             router.visit(item.action_url);
             onClose();
         }
     }
 
-    if (!mounted) return null;
+    if (!mounted) {
+return null;
+}
 
     return createPortal(
         <div className="pointer-events-none fixed inset-0 z-[100]" aria-hidden={!open}>
@@ -135,6 +148,7 @@ export function NotificationsDrawer({ open, onClose, items, unreadCount }: Props
                             {items.map((item) => {
                                 const Icon = ICONS[item.type] ?? Bell;
                                 const unread = item.read_at === null;
+
                                 return (
                                     <li key={item.id}>
                                         <button
@@ -192,11 +206,26 @@ function formatRelative(iso: string): string {
     const date = new Date(iso);
     const diffMs = Date.now() - date.getTime();
     const diffMin = Math.round(diffMs / 60000);
-    if (diffMin < 1) return 'только что';
-    if (diffMin < 60) return `${diffMin} мин назад`;
+
+    if (diffMin < 1) {
+return 'только что';
+}
+
+    if (diffMin < 60) {
+return `${diffMin} мин назад`;
+}
+
     const diffHrs = Math.round(diffMin / 60);
-    if (diffHrs < 24) return `${diffHrs} ч назад`;
+
+    if (diffHrs < 24) {
+return `${diffHrs} ч назад`;
+}
+
     const diffDays = Math.round(diffHrs / 24);
-    if (diffDays < 7) return `${diffDays} дн назад`;
+
+    if (diffDays < 7) {
+return `${diffDays} дн назад`;
+}
+
     return date.toLocaleDateString('ru-RU');
 }

@@ -5,6 +5,7 @@ namespace App\Actions\Orders;
 use App\Actions\Loyalty\GrantOrderBonuses;
 use App\Actions\Loyalty\RefundOrderBonuses;
 use App\Enums\OrderStatus;
+use App\Events\PosTicketsUpdated;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -72,6 +73,10 @@ class TransitionOrderStatus
             } elseif ($to === OrderStatus::Cancelled) {
                 $this->refundBonuses->handle($order);
             }
+
+            // Any status change can add or remove a KDS ticket (acceptance
+            // shows it, cancellation hides it) — let the station screens know.
+            PosTicketsUpdated::dispatch($order->id);
 
             return $order;
         });

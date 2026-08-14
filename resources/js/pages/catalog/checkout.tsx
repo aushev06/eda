@@ -124,6 +124,7 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
 
     function selectSavedAddress(addressId: number | 'new') {
         setSelectedAddressId(addressId);
+
         if (addressId === 'new') {
             form.setData('delivery', {
                 ...form.data.delivery,
@@ -134,10 +135,16 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
                 intercom: '',
                 instructions: '',
             });
+
             return;
         }
+
         const a = saved_addresses.find((x) => x.id === addressId);
-        if (!a) return;
+
+        if (!a) {
+return;
+}
+
         form.setData('delivery', {
             ...form.data.delivery,
             street: a.street,
@@ -176,7 +183,10 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
     const discount = appliedPromo ? appliedPromo.discount : 0;
 
     const bonusCap = useMemo(() => {
-        if (!loyalty || subtotal <= 0) return 0;
+        if (!loyalty || subtotal <= 0) {
+return 0;
+}
+
         return Math.min(loyalty.balance, Math.floor((subtotal * loyalty.max_spend_percent) / 100));
     }, [loyalty, subtotal]);
 
@@ -194,7 +204,10 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
     // Re-validate the applied promo whenever cart subtotal or phone changes —
     // server-side rules (min_order_amount, first_order_only) depend on them.
     useEffect(() => {
-        if (!appliedPromo) return;
+        if (!appliedPromo) {
+return;
+}
+
         let cancelled = false;
 
         const run = async () => {
@@ -212,13 +225,19 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
                         customer_phone: form.data.customer_phone || null,
                     }),
                 });
-                if (cancelled) return;
+
+                if (cancelled) {
+return;
+}
+
                 if (!res.ok) {
                     setAppliedPromo(null);
                     const body = await res.json().catch(() => ({}));
                     setPromoError(body?.message ?? 'Промокод больше не применим.');
+
                     return;
                 }
+
                 const body = await res.json();
                 setAppliedPromo({ code: body.code, description: body.description, discount: Number(body.discount) });
             } catch {
@@ -227,6 +246,7 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
         };
 
         void run();
+
         return () => {
             cancelled = true;
         };
@@ -235,9 +255,14 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
 
     async function applyPromo() {
         const code = promoInput.trim();
-        if (!code || promoLoading) return;
+
+        if (!code || promoLoading) {
+return;
+}
+
         setPromoError(null);
         setPromoLoading(true);
+
         try {
             const res = await fetch('/promo-codes/validate', {
                 method: 'POST',
@@ -253,12 +278,15 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
                 }),
             });
             const body = await res.json().catch(() => ({}));
+
             if (!res.ok || !body.valid) {
                 setAppliedPromo(null);
                 setPromoError(body?.message ?? 'Промокод недействителен.');
                 form.setData('promo_code', '');
+
                 return;
             }
+
             setAppliedPromo({ code: body.code, description: body.description, discount: Number(body.discount) });
             form.setData('promo_code', body.code);
         } catch {
@@ -372,6 +400,7 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
                                     <div className="grid gap-2">
                                         {saved_addresses.map((address) => {
                                             const checked = selectedAddressId === address.id;
+
                                             return (
                                                 <label
                                                     key={address.id}
@@ -430,6 +459,7 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
                                 <div className="grid gap-2">
                                     {zones.map((zone) => {
                                         const checked = form.data.delivery.zone_id === zone.id;
+
                                         return (
                                             <label
                                                 key={zone.id}
@@ -838,6 +868,7 @@ function Row({
         : accent === 'success'
             ? 'text-emerald-700'
             : 'text-stone-600';
+
     return (
         <div className={`flex justify-between ${cls}`}>
             <dt>{label}</dt>
@@ -859,6 +890,7 @@ function Banner({
         tone === 'danger'
             ? 'border-rose-200 bg-rose-50 text-rose-900'
             : 'border-amber-200 bg-amber-50 text-amber-900';
+
     return (
         <div className={`rounded-2xl border px-4 py-3 ${cls}`}>
             <p className="font-medium">{title}</p>

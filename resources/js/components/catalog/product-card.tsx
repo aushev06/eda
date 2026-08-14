@@ -14,13 +14,20 @@ export function ProductCard({ product, onOpen, onQuickAdd }: Props) {
     const stopped = product.in_stop_list;
 
     function handleCardClick() {
-        if (stopped) return;
+        if (stopped) {
+return;
+}
+
         onOpen(product);
     }
 
     function handleAdd(e: React.MouseEvent) {
         e.stopPropagation();
-        if (stopped) return;
+
+        if (stopped) {
+return;
+}
+
         if (hasOptions) {
             onOpen(product);
         } else {

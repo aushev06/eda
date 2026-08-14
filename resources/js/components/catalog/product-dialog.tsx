@@ -22,6 +22,7 @@ export function ProductDialog({ product, onClose }: Props) {
     useEffect(() => {
         if (product) {
             const initial: Selection = {};
+
             for (const group of product.modifier_groups) {
                 if (group.is_required && group.min_select >= 1 && group.modifiers.length > 0) {
                     initial[group.id] = [group.modifiers[0].id];
@@ -29,6 +30,7 @@ export function ProductDialog({ product, onClose }: Props) {
                     initial[group.id] = [];
                 }
             }
+
             setSelection(initial);
             setQuantity(1);
             dialogRef.current?.showModal();
@@ -58,33 +60,52 @@ export function ProductDialog({ product, onClose }: Props) {
     }
 
     const flatModifiers = useMemo<CartLineModifier[]>(() => {
-        if (!product) return [];
+        if (!product) {
+return [];
+}
+
         const out: CartLineModifier[] = [];
+
         for (const group of product.modifier_groups) {
             const ids = selection[group.id] ?? [];
+
             for (const id of ids) {
                 const m = group.modifiers.find((x) => x.id === id);
-                if (m) out.push({ modifier_id: m.id, name: m.name, price_delta: Number(m.price_delta) });
+
+                if (m) {
+out.push({ modifier_id: m.id, name: m.name, price_delta: Number(m.price_delta) });
+}
             }
         }
+
         return out;
     }, [product, selection]);
 
     const unmetGroups = useMemo(() => {
-        if (!product) return [];
+        if (!product) {
+return [];
+}
+
         return product.modifier_groups.filter((g) => (selection[g.id]?.length ?? 0) < g.min_select);
     }, [product, selection]);
 
     const isValid = unmetGroups.length === 0;
 
     const unitPrice = useMemo(() => {
-        if (!product) return 0;
+        if (!product) {
+return 0;
+}
+
         const modSum = flatModifiers.reduce((acc, m) => acc + m.price_delta, 0);
+
         return Number(product.price) + modSum;
     }, [product, flatModifiers]);
 
     function handleAdd() {
-        if (!product || !isValid) return;
+        if (!product || !isValid) {
+return;
+}
+
         add({ product, modifiers: flatModifiers, quantity });
         onClose();
     }
@@ -94,7 +115,9 @@ export function ProductDialog({ product, onClose }: Props) {
             ref={dialogRef}
             onClose={onClose}
             onClick={(e) => {
-                if (e.target === dialogRef.current) onClose();
+                if (e.target === dialogRef.current) {
+onClose();
+}
             }}
             className="m-auto w-full max-w-2xl rounded-2xl p-0 backdrop:bg-stone-900/40 backdrop:backdrop-blur-sm"
         >
@@ -159,6 +182,7 @@ export function ProductDialog({ product, onClose }: Props) {
                                         <ul className="space-y-1.5">
                                             {group.modifiers.map((modifier) => {
                                                 const checked = selected.includes(modifier.id);
+
                                                 return (
                                                     <li key={modifier.id}>
                                                         <label

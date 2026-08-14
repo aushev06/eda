@@ -5,17 +5,15 @@ namespace App\Actions\Orders;
 use App\Actions\Loyalty\SpendBonuses;
 use App\Actions\Promo\ApplyPromoCode;
 use App\Enums\DeliveryType;
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Models\Customer;
 use App\Models\DeliveryZone;
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\Table;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CreateOrder
@@ -23,6 +21,7 @@ class CreateOrder
     public function __construct(
         protected ApplyPromoCode $applyPromoCode,
         protected SpendBonuses $spendBonuses,
+        protected PriceOrderItems $priceOrderItems,
     ) {}
 
     /**
@@ -30,7 +29,7 @@ class CreateOrder
      *     customer_name: string,
      *     customer_phone: string,
      *     delivery_type: string,
-     *     payment_method: string,
+     *     payment_method?: ?string,
      *     customer_comment?: ?string,
      *     items: array<int, array{product_id: int, quantity: int, modifier_ids: array<int, int>}>,
      *     delivery?: array{
@@ -45,29 +44,17 @@ class CreateOrder
      *     promo_code?: ?string,
      *     bonus_to_use?: int|float|null,
      *     table_id?: int|null,
-     *     authenticated_customer_id?: int|null
+     *     authenticated_customer_id?: int|null,
+     *     source?: ?string,
+     *     payment_status?: ?string
      * }  $data
      */
     public function handle(array $data): Order
     {
         $deliveryType = DeliveryType::from($data['delivery_type']);
-        $paymentMethod = PaymentMethod::from($data['payment_method']);
-
-        $productIds = collect($data['items'])->pluck('product_id')->unique()->all();
-        $products = Product::query()
-            ->whereIn('id', $productIds)
-            ->where('is_active', true)
-            ->where('in_stop_list', false)
-            ->with('modifierGroups.modifiers')
-            ->get()
-            ->keyBy('id');
-
-        $missing = collect($productIds)->diff($products->keys());
-        if ($missing->isNotEmpty()) {
-            throw ValidationException::withMessages([
-                'items' => 'Некоторые блюда недоступны для заказа.',
-            ]);
-        }
+        $paymentMethod = isset($data['payment_method']) ? PaymentMethod::from($data['payment_method']) : null;
+        $source = isset($data['source']) ? OrderSource::from($data['source']) : OrderSource::Site;
+        $paymentStatus = isset($data['payment_status']) ? PaymentStatus::from($data['payment_status']) : PaymentStatus::Pending;
 
         $zone = null;
         if ($deliveryType === DeliveryType::Delivery) {
@@ -91,7 +78,7 @@ class CreateOrder
             }
         }
 
-        [$subtotal, $modifiersTotal, $itemRows] = $this->priceItems($data['items'], $products);
+        [$subtotal, $modifiersTotal, $itemRows] = $this->priceOrderItems->handle($data['items']);
 
         $deliveryFee = $zone ? (float) $zone->delivery_fee : 0.0;
 
@@ -136,12 +123,17 @@ class CreateOrder
         return DB::transaction(function () use (
             $data, $deliveryType, $paymentMethod, $zone, $table, $itemRows, $promo,
             $subtotal, $modifiersTotal, $deliveryFee, $discountTotal, $total,
-            $bonusUsed, $authedCustomer
+            $bonusUsed, $authedCustomer, $source, $paymentStatus
         ) {
-            $customer = $authedCustomer ?? Customer::query()->firstOrCreate(
-                ['phone' => $data['customer_phone']],
-                ['name' => $data['customer_name']],
-            );
+            // Walk-up POS orders carry no guest identity — linking them all to a
+            // shared phantom "Гость" customer would pollute loyalty with cashback.
+            $customer = $authedCustomer;
+            if (! $customer && $source !== OrderSource::Pos) {
+                $customer = Customer::query()->firstOrCreate(
+                    ['phone' => $data['customer_phone']],
+                    ['name' => $data['customer_name']],
+                );
+            }
 
             $deliveryFields = $deliveryType === DeliveryType::Delivery
                 ? [
@@ -155,8 +147,9 @@ class CreateOrder
                 : [];
 
             $order = Order::create(array_merge([
-                'number' => $this->generateNumber(),
-                'customer_id' => $customer->id,
+                'number' => Order::generateNumber(),
+                'source' => $source,
+                'customer_id' => $customer?->id,
                 'delivery_zone_id' => $zone?->id,
                 'table_id' => $table?->id,
                 'table_number_snapshot' => $table ? (string) $table->number : null,
@@ -165,7 +158,7 @@ class CreateOrder
                 'status' => OrderStatus::New,
                 'delivery_type' => $deliveryType,
                 'payment_method' => $paymentMethod,
-                'payment_status' => PaymentStatus::Pending,
+                'payment_status' => $paymentStatus,
                 'customer_name' => $data['customer_name'],
                 'customer_phone' => $data['customer_phone'],
                 'subtotal' => $subtotal,
@@ -200,7 +193,7 @@ class CreateOrder
 
             if ($promo) {
                 $promo->usages()->create([
-                    'customer_id' => $customer->id,
+                    'customer_id' => $customer?->id,
                     'order_id' => $order->id,
                     'discount_amount' => $discountTotal,
                     'created_at' => now(),
@@ -213,92 +206,5 @@ class CreateOrder
 
             return $order->refresh();
         });
-    }
-
-    /**
-     * @param  array<int, array{product_id: int, quantity: int, modifier_ids: array<int, int>}>  $items
-     * @param  Collection<int, Product>  $products
-     * @return array{0: float, 1: float, 2: array<int, array<string, mixed>>}
-     */
-    protected function priceItems(array $items, Collection $products): array
-    {
-        $subtotal = 0.0;
-        $modifiersTotalAll = 0.0;
-        $rows = [];
-
-        foreach ($items as $idx => $line) {
-            /** @var Product $product */
-            $product = $products[$line['product_id']];
-            $quantity = max(1, (int) $line['quantity']);
-            $unitPrice = (float) $product->price;
-
-            $allowedModifierIds = $product->modifierGroups
-                ->flatMap(fn ($g) => $g->modifiers)
-                ->pluck('id')
-                ->all();
-
-            $modifierIds = array_values(array_unique(array_map('intval', $line['modifier_ids'] ?? [])));
-            $unknown = array_diff($modifierIds, $allowedModifierIds);
-            if (! empty($unknown)) {
-                throw ValidationException::withMessages([
-                    "items.$idx.modifier_ids" => 'Выбранные опции не относятся к этому блюду.',
-                ]);
-            }
-
-            $selectedByGroup = [];
-            $perUnitDelta = 0.0;
-            $modSnapshots = [];
-
-            foreach ($product->modifierGroups as $group) {
-                $selectedFromGroup = $group->modifiers->filter(
-                    fn ($m) => in_array($m->id, $modifierIds, true)
-                );
-
-                $count = $selectedFromGroup->count();
-                if ($count < $group->min_select || $count > $group->max_select) {
-                    throw ValidationException::withMessages([
-                        "items.$idx.modifier_ids" => "Группа «{$group->name}»: выберите от {$group->min_select} до {$group->max_select} вариантов.",
-                    ]);
-                }
-
-                foreach ($selectedFromGroup as $modifier) {
-                    $delta = (float) $modifier->price_delta;
-                    $perUnitDelta += $delta;
-                    $modSnapshots[] = [
-                        'modifier_id' => $modifier->id,
-                        'modifier_name' => $modifier->name,
-                        'price_delta' => $delta,
-                    ];
-                }
-                $selectedByGroup[$group->id] = $count;
-            }
-
-            $modifiersTotalLine = $perUnitDelta * $quantity;
-            $lineTotal = $unitPrice * $quantity + $modifiersTotalLine;
-
-            $subtotal += $unitPrice * $quantity;
-            $modifiersTotalAll += $modifiersTotalLine;
-
-            $rows[] = [
-                'product_id' => $product->id,
-                'product_name' => $product->name,
-                'quantity' => $quantity,
-                'unit_price' => $unitPrice,
-                'modifiers_total' => $modifiersTotalLine,
-                'line_total' => $lineTotal,
-                'modifiers' => $modSnapshots,
-            ];
-        }
-
-        return [$subtotal, $modifiersTotalAll, $rows];
-    }
-
-    protected function generateNumber(): string
-    {
-        do {
-            $candidate = 'A-'.strtoupper(Str::random(6));
-        } while (Order::query()->where('number', $candidate)->exists());
-
-        return $candidate;
     }
 }

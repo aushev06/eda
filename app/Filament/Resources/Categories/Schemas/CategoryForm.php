@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Categories\Schemas;
 
+use App\Enums\Station;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
@@ -33,6 +35,13 @@ class CategoryForm
                     ->required()
                     ->numeric()
                     ->default(0),
+                Select::make('station')
+                    ->label('Станция приготовления')
+                    ->options(Station::options())
+                    ->default(Station::Kitchen->value)
+                    ->required()
+                    ->native(false)
+                    ->helperText('Куда уходят позиции этой категории на POS: кухня или бар.'),
                 Toggle::make('is_active')
                     ->label('Активна')
                     ->default(true),

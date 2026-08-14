@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Products\Schemas;
 
+use App\Enums\Station;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -94,6 +95,12 @@ class ProductForm
                 Section::make('Статус')
                     ->columns(3)
                     ->schema([
+                        Select::make('station')
+                            ->label('Станция (переопределение)')
+                            ->options(Station::options())
+                            ->placeholder('Как у категории')
+                            ->native(false)
+                            ->helperText('Оставьте пустым, чтобы блюдо уходило на станцию своей категории.'),
                         Toggle::make('is_active')
                             ->label('Активно')
                             ->default(true),

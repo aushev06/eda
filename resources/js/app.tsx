@@ -1,10 +1,15 @@
 import { createInertiaApp, router } from '@inertiajs/react';
+import { configureEcho } from '@laravel/echo-react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+
+configureEcho({
+    broadcaster: 'reverb',
+});
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -14,7 +19,8 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
  * from admin pages.
  */
 function syncDarkClass(component: string | undefined) {
-    const isCustomer = !!component && (component.startsWith('catalog/') || component.startsWith('account/'));
+    const isCustomer = !!component && (component.startsWith('catalog/') || component.startsWith('account/') || component.startsWith('pos/'));
+
     if (isCustomer) {
         document.documentElement.classList.remove('dark');
     } else {
@@ -33,6 +39,8 @@ createInertiaApp({
             case name.startsWith('catalog/'):
                 return null;
             case name.startsWith('account/'):
+                return null;
+            case name.startsWith('pos/'):
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;

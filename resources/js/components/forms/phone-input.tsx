@@ -74,6 +74,7 @@ export function PhoneInput({
                 onChange={(e) => handleChange(e.target.value)}
                 onPaste={(e) => {
                     const text = e.clipboardData.getData('text');
+
                     if (text) {
                         e.preventDefault();
                         handleChange(text);

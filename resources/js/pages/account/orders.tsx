@@ -116,7 +116,14 @@ export default function AccountOrders({ orders }: Props) {
 function pluralize(n: number): string {
     const m10 = n % 10;
     const m100 = n % 100;
-    if (m10 === 1 && m100 !== 11) return 'позиция';
-    if ([2, 3, 4].includes(m10) && ![12, 13, 14].includes(m100)) return 'позиции';
+
+    if (m10 === 1 && m100 !== 11) {
+return 'позиция';
+}
+
+    if ([2, 3, 4].includes(m10) && ![12, 13, 14].includes(m100)) {
+return 'позиции';
+}
+
     return 'позиций';
 }

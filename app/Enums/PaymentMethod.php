@@ -7,6 +7,7 @@ enum PaymentMethod: string
     case Cash = 'cash';
     case CardOnline = 'card_online';
     case CardCourier = 'card_courier';
+    case Split = 'split';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum PaymentMethod: string
             self::Cash => 'Наличные',
             self::CardOnline => 'Карта онлайн',
             self::CardCourier => 'Карта курьеру',
+            self::Split => 'Смешанная',
         };
     }
 

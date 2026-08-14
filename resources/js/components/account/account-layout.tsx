@@ -1,6 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Bell, Gift, LogOut, MapPin, ShoppingBag, User } from 'lucide-react';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 type Props = {
     title: string;

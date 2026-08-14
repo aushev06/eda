@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Categories\Tables;
 
+use App\Enums\Station;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -28,6 +29,11 @@ class CategoriesTable
                     ->label('Блюд')
                     ->counts('products')
                     ->badge(),
+                TextColumn::make('station')
+                    ->label('Станция')
+                    ->badge()
+                    ->formatStateUsing(fn (Station $state): string => $state->label())
+                    ->color(fn (Station $state): string => $state === Station::Bar ? 'info' : 'warning'),
                 IconColumn::make('is_active')
                     ->label('Активна')
                     ->boolean(),

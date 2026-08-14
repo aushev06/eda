@@ -117,6 +117,7 @@ export default function LoyaltyInfo({ establishment, levels, is_enabled, max_spe
                                 const gradient = TIER_GRADIENTS[index] ?? 'from-stone-400 to-stone-500';
                                 const threshold = Number(level.min_lifetime_spend);
                                 const percent = Number(level.cashback_percent);
+
                                 return (
                                     <div
                                         key={level.id}
@@ -241,6 +242,7 @@ function FaqItem({ question, children }: { question: string; children: React.Rea
 
 function formatPercent(value: number): string {
     const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
+
     return `${formatted}%`;
 }
 

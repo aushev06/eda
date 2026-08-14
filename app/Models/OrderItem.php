@@ -21,6 +21,9 @@ class OrderItem extends Model
         'unit_price',
         'modifiers_total',
         'line_total',
+        'completed_at',
+        'voided_at',
+        'void_reason',
     ];
 
     protected function casts(): array
@@ -30,6 +33,8 @@ class OrderItem extends Model
             'unit_price' => 'decimal:2',
             'modifiers_total' => 'decimal:2',
             'line_total' => 'decimal:2',
+            'completed_at' => 'datetime',
+            'voided_at' => 'datetime',
         ];
     }
 

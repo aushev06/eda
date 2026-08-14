@@ -5,6 +5,7 @@ use App\Http\Controllers\Customer\AccountController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\NotificationsController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PosController;
 use App\Http\Controllers\PromoController;
 use App\Http\Controllers\TableController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +51,27 @@ Route::middleware('auth:customer')->prefix('account')->name('account.')->group(f
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
+});
+
+// POS: cashier screen and kitchen/bar station displays (staff only)
+Route::middleware(['auth', 'can:pos'])->prefix('pos')->name('pos.')->group(function () {
+    Route::get('/', [PosController::class, 'index'])->name('index');
+    Route::post('/orders', [PosController::class, 'store'])->name('orders.store');
+    Route::post('/quote', [PosController::class, 'quote'])->name('quote');
+
+    // Table service: floor view, open check editor, and check mutations
+    Route::get('/tables', [PosController::class, 'tables'])->name('tables');
+    Route::get('/tables/{table}', [PosController::class, 'check'])->name('tables.check');
+    Route::post('/orders/{order}/items', [PosController::class, 'addItems'])->name('orders.items');
+    Route::delete('/order-items/{item}', [PosController::class, 'removeItem'])->name('order-items.remove');
+    Route::post('/orders/{order}/close', [PosController::class, 'close'])->name('orders.close');
+
+    Route::get('/{station}', [PosController::class, 'kds'])
+        ->where('station', 'kitchen|bar')
+        ->name('kds');
+    Route::post('/orders/{order}/bump/{station}', [PosController::class, 'bump'])
+        ->where('station', 'kitchen|bar')
+        ->name('orders.bump');
 });
 
 require __DIR__.'/settings.php';

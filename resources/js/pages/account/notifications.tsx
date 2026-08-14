@@ -66,6 +66,7 @@ export default function AccountNotifications({ notifications }: Props) {
                             {notifications.map((item) => {
                                 const Icon = ICONS[item.type] ?? Bell;
                                 const unread = item.read_at === null;
+
                                 return (
                                     <li key={item.id}>
                                         <div

@@ -42,7 +42,10 @@ export default function AccountAddresses({ addresses }: Props) {
     }
 
     function remove(id: number) {
-        if (!confirm('Удалить адрес?')) return;
+        if (!confirm('Удалить адрес?')) {
+return;
+}
+
         router.delete(`/account/addresses/${id}`);
     }
 

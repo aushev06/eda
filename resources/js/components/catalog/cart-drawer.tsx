@@ -15,9 +15,15 @@ export function CartDrawer({ establishment }: Props) {
 
     useEffect(() => {
         function onKey(e: KeyboardEvent) {
-            if (e.key === 'Escape') close();
+            if (e.key === 'Escape') {
+close();
+}
         }
-        if (isOpen) window.addEventListener('keydown', onKey);
+
+        if (isOpen) {
+window.addEventListener('keydown', onKey);
+}
+
         return () => window.removeEventListener('keydown', onKey);
     }, [isOpen, close]);
 
@@ -62,6 +68,7 @@ export function CartDrawer({ establishment }: Props) {
                     <ul className="flex-1 divide-y divide-stone-100 overflow-y-auto px-2 py-2">
                         {lines.map((line) => {
                             const unitTotal = line.unit_price + line.modifiers_total_per_unit;
+
                             return (
                                 <li key={line.id} className="flex gap-3 px-3 py-3">
                                     {line.image_url ? (
@@ -168,7 +175,14 @@ export function CartDrawer({ establishment }: Props) {
 function pluralize(n: number): string {
     const mod10 = n % 10;
     const mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'позиция';
-    if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return 'позиции';
+
+    if (mod10 === 1 && mod100 !== 11) {
+return 'позиция';
+}
+
+    if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) {
+return 'позиции';
+}
+
     return 'позиций';
 }
