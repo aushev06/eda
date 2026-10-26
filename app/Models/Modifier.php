@@ -13,6 +13,7 @@ class Modifier extends Model
     use HasFactory;
 
     protected $fillable = [
+        'fusion_pos_id',
         'modifier_group_id',
         'name',
         'price_delta',
@@ -23,6 +24,7 @@ class Modifier extends Model
     protected function casts(): array
     {
         return [
+            'fusion_pos_id' => 'integer',
             'price_delta' => 'decimal:2',
             'is_active' => 'boolean',
             'sort_order' => 'integer',

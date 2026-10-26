@@ -79,6 +79,12 @@ class ProductForm
                             ->label('Калории, ккал')
                             ->numeric()
                             ->minValue(0),
+                        TextInput::make('fusion_pos_id')
+                            ->label('ID в FusionPOS')
+                            ->numeric()
+                            ->minValue(1)
+                            ->unique(ignoreRecord: true)
+                            ->helperText('Заполняется при загрузке меню из FusionPOS. По нему обновляется цена.'),
                     ]),
 
                 Section::make('Модификаторы')

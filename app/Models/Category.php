@@ -14,6 +14,7 @@ class Category extends Model
     use HasFactory;
 
     protected $fillable = [
+        'fusion_pos_id',
         'name',
         'slug',
         'sort_order',
@@ -24,6 +25,7 @@ class Category extends Model
     protected function casts(): array
     {
         return [
+            'fusion_pos_id' => 'integer',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
             'station' => Station::class,

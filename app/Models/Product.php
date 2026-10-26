@@ -18,6 +18,8 @@ class Product extends Model
 
     protected $fillable = [
         'category_id',
+        'fusion_pos_id',
+        'fusion_pos_category_id',
         'name',
         'slug',
         'description',
@@ -37,6 +39,8 @@ class Product extends Model
     protected function casts(): array
     {
         return [
+            'fusion_pos_id' => 'integer',
+            'fusion_pos_category_id' => 'integer',
             'price' => 'decimal:2',
             'weight_grams' => 'integer',
             'calories' => 'integer',

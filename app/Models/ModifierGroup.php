@@ -14,6 +14,7 @@ class ModifierGroup extends Model
     use HasFactory;
 
     protected $fillable = [
+        'fusion_pos_id',
         'name',
         'min_select',
         'max_select',
@@ -24,6 +25,7 @@ class ModifierGroup extends Model
     protected function casts(): array
     {
         return [
+            'fusion_pos_id' => 'integer',
             'min_select' => 'integer',
             'max_select' => 'integer',
             'is_required' => 'boolean',
