@@ -33,16 +33,19 @@ services:
   queue:
     <<: *app
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    healthcheck: { disable: true }
     mem_limit: 192m
 
   scheduler:
     <<: *app
     command: ["php", "artisan", "schedule:work"]
+    healthcheck: { disable: true }
     mem_limit: 160m
 
   reverb:
     <<: *app
     command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    healthcheck: { disable: true }
     networks:
       default: {}
       edge: { aliases: [fidele-reverb] }
