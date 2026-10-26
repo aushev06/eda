@@ -1,0 +1,76 @@
+# Deploy on a host with a shared front Caddy on the external `edge` network.
+# Usage (in /opt/fidele): copy this file next to a filled-in .env, then
+#   docker compose up -d --build
+name: fidele
+
+x-app: &app
+  image: fidele-app:latest
+  pull_policy: never
+  restart: unless-stopped
+  env_file: .env
+  volumes:
+    - storage:/app/storage/app
+    - logs:/app/storage/logs
+  depends_on:
+    db: { condition: service_healthy }
+  logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+services:
+  app:
+    <<: *app
+    build:
+      context: ./src
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        VITE_APP_NAME: ${APP_NAME}
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY}
+        VITE_REVERB_HOST: ${PUBLIC_HOST}
+    networks:
+      default: {}
+      edge: { aliases: [fidele-app] }
+    mem_limit: 320m
+
+  queue:
+    <<: *app
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    mem_limit: 192m
+
+  scheduler:
+    <<: *app
+    command: ["php", "artisan", "schedule:work"]
+    mem_limit: 160m
+
+  reverb:
+    <<: *app
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    networks:
+      default: {}
+      edge: { aliases: [fidele-reverb] }
+    mem_limit: 160m
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_RANDOM_ROOT_PASSWORD: "1"
+    command: ["--innodb-buffer-pool-size=96M", "--performance-schema=OFF", "--max-connections=40"]
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 5s
+      retries: 30
+    mem_limit: 384m
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+volumes:
+  db_data:
+  storage:
+  logs:
+
+networks:
+  edge:
+    external: true
