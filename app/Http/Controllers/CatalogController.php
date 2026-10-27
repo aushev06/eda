@@ -7,6 +7,7 @@ use App\Models\DeliveryZone;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyLevel;
 use App\Models\StoryGroup;
+use App\Services\Payments\PaymentGatewayManager;
 use App\Support\Settings;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -52,7 +53,7 @@ class CatalogController extends Controller
         ]);
     }
 
-    public function checkout(): Response
+    public function checkout(PaymentGatewayManager $paymentGateways): Response
     {
         $zones = DeliveryZone::query()
             ->active()
@@ -82,6 +83,7 @@ class CatalogController extends Controller
                 'accepting_orders' => Settings::isAcceptingOrders(),
                 'closed_reason' => Settings::closedReason(),
                 'min_order_amount' => (float) Settings::get('orders.min_order_amount', 0),
+                'online_payment' => $paymentGateways->isOnlinePaymentAvailable(),
             ],
             'zones' => $zones,
             'saved_addresses' => $savedAddresses,

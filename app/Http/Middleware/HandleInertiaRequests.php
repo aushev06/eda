@@ -48,6 +48,7 @@ class HandleInertiaRequests extends Middleware
                 'status' => fn () => $request->session()->get('status'),
                 'dev_otp' => fn () => $request->session()->get('dev_otp'),
                 'placed_order_number' => fn () => $request->session()->get('placed_order_number'),
+                'payment_error' => fn () => $request->session()->get('payment_error'),
                 'closed_order_number' => fn () => $request->session()->get('closed_order_number'),
                 'change_due' => fn () => $request->session()->get('change_due'),
             ],

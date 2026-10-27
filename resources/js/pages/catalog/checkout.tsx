@@ -46,11 +46,18 @@ type Props = {
 };
 
 type SharedAuth = {
-    auth: { customer: { name: string; phone: string; email: string | null } | null };
+    auth: {
+        customer: { name: string; phone: string; email: string | null } | null;
+    };
     table: { id: number; number: number; label: string | null } | null;
 };
 
-export default function CheckoutPage({ establishment, zones, saved_addresses, loyalty }: Props) {
+export default function CheckoutPage({
+    establishment,
+    zones,
+    saved_addresses,
+    loyalty,
+}: Props) {
     return (
         <CartProvider>
             <Head title="Оформление заказа" />
@@ -73,7 +80,11 @@ type FormPayload = {
     promo_code: string;
     bonus_to_use: number;
     table_id: number | null;
-    items: Array<{ product_id: number; quantity: number; modifier_ids: number[] }>;
+    items: Array<{
+        product_id: number;
+        quantity: number;
+        modifier_ids: number[];
+    }>;
     delivery: {
         zone_id: number | null;
         street: string;
@@ -89,15 +100,16 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
     const { lines, subtotal, count, clear } = useCart();
     const { auth, table } = usePage<SharedAuth>().props;
     const authCustomer = auth.customer;
-    const defaultAddress = saved_addresses.find((a) => a.is_default) ?? saved_addresses[0] ?? null;
+    const defaultAddress =
+        saved_addresses.find((a) => a.is_default) ?? saved_addresses[0] ?? null;
 
     // If a QR table is active in the session, the order is dine-in and locked
     // to that table. Otherwise default to delivery (if zones exist) or pickup.
     const initialDeliveryType: FormPayload['delivery_type'] = table
         ? 'dine_in'
         : zones.length > 0
-            ? 'delivery'
-            : 'pickup';
+          ? 'delivery'
+          : 'pickup';
 
     const form = useForm<FormPayload>({
         customer_name: authCustomer?.name ?? '',
@@ -120,7 +132,9 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
         },
     });
 
-    const [selectedAddressId, setSelectedAddressId] = useState<number | 'new'>(defaultAddress?.id ?? 'new');
+    const [selectedAddressId, setSelectedAddressId] = useState<number | 'new'>(
+        defaultAddress?.id ?? 'new',
+    );
 
     function selectSavedAddress(addressId: number | 'new') {
         setSelectedAddressId(addressId);
@@ -142,8 +156,8 @@ function Checkout({ establishment, zones, saved_addresses, loyalty }: Props) {
         const a = saved_addresses.find((x) => x.id === addressId);
 
         if (!a) {
-return;
-}
+            return;
+        }
 
         form.setData('delivery', {
             ...form.data.delivery,
@@ -179,15 +193,20 @@ return;
     );
 
     const deliveryFee =
-        form.data.delivery_type === 'delivery' && selectedZone ? Number(selectedZone.delivery_fee) : 0;
+        form.data.delivery_type === 'delivery' && selectedZone
+            ? Number(selectedZone.delivery_fee)
+            : 0;
     const discount = appliedPromo ? appliedPromo.discount : 0;
 
     const bonusCap = useMemo(() => {
         if (!loyalty || subtotal <= 0) {
-return 0;
-}
+            return 0;
+        }
 
-        return Math.min(loyalty.balance, Math.floor((subtotal * loyalty.max_spend_percent) / 100));
+        return Math.min(
+            loyalty.balance,
+            Math.floor((subtotal * loyalty.max_spend_percent) / 100),
+        );
     }, [loyalty, subtotal]);
 
     // Clamp bonus_to_use whenever cap changes (cart edits etc).
@@ -205,8 +224,8 @@ return 0;
     // server-side rules (min_order_amount, first_order_only) depend on them.
     useEffect(() => {
         if (!appliedPromo) {
-return;
-}
+            return;
+        }
 
         let cancelled = false;
 
@@ -227,19 +246,25 @@ return;
                 });
 
                 if (cancelled) {
-return;
-}
+                    return;
+                }
 
                 if (!res.ok) {
                     setAppliedPromo(null);
                     const body = await res.json().catch(() => ({}));
-                    setPromoError(body?.message ?? 'Промокод больше не применим.');
+                    setPromoError(
+                        body?.message ?? 'Промокод больше не применим.',
+                    );
 
                     return;
                 }
 
                 const body = await res.json();
-                setAppliedPromo({ code: body.code, description: body.description, discount: Number(body.discount) });
+                setAppliedPromo({
+                    code: body.code,
+                    description: body.description,
+                    discount: Number(body.discount),
+                });
             } catch {
                 // silently keep current state on network failure
             }
@@ -257,8 +282,8 @@ return;
         const code = promoInput.trim();
 
         if (!code || promoLoading) {
-return;
-}
+            return;
+        }
 
         setPromoError(null);
         setPromoLoading(true);
@@ -287,7 +312,11 @@ return;
                 return;
             }
 
-            setAppliedPromo({ code: body.code, description: body.description, discount: Number(body.discount) });
+            setAppliedPromo({
+                code: body.code,
+                description: body.description,
+                discount: Number(body.discount),
+            });
             form.setData('promo_code', body.code);
         } catch {
             setPromoError('Не удалось проверить промокод. Попробуйте ещё раз.');
@@ -303,14 +332,34 @@ return;
         form.setData('promo_code', '');
     }
 
+    const paymentMethods: FormPayload['payment_method'][] =
+        establishment.online_payment
+            ? ['cash', 'card_courier', 'card_online']
+            : ['cash', 'card_courier'];
+
     const zoneMin = selectedZone ? Number(selectedZone.min_order_amount) : 0;
-    const belowZoneMin = form.data.delivery_type === 'delivery' && selectedZone && subtotal < zoneMin;
+    const belowZoneMin =
+        form.data.delivery_type === 'delivery' &&
+        selectedZone &&
+        subtotal < zoneMin;
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
+        let failed = false;
+
         form.post(ordersStore.url(), {
             preserveScroll: true,
             onSuccess: () => clear(),
+            onError: () => {
+                failed = true;
+            },
+            // Online payment answers with an external redirect to the gateway,
+            // which skips onSuccess — the order exists by then, so drop the cart.
+            onFinish: () => {
+                if (!failed && form.data.payment_method === 'card_online') {
+                    clear();
+                }
+            },
         });
     }
 
@@ -322,19 +371,27 @@ return;
         <div className="min-h-screen bg-stone-50 text-stone-900">
             <header className="border-b border-stone-200 bg-white">
                 <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
-                    <Link href="/" className="inline-flex items-center gap-2 text-sm text-stone-600 hover:text-stone-900">
-                        <ArrowLeft className="size-4" />
-                        К меню
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 text-sm text-stone-600 hover:text-stone-900"
+                    >
+                        <ArrowLeft className="size-4" />К меню
                     </Link>
-                    <span className="text-base font-semibold">{establishment.name}</span>
+                    <span className="text-base font-semibold">
+                        {establishment.name}
+                    </span>
                 </div>
             </header>
 
             <main className="mx-auto grid max-w-5xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_360px]">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {!establishment.accepting_orders && (
-                        <Banner tone="danger" title="Заказы временно не принимаются">
-                            {establishment.closed_reason ?? 'Загляните чуть позже.'}
+                        <Banner
+                            tone="danger"
+                            title="Заказы временно не принимаются"
+                        >
+                            {establishment.closed_reason ??
+                                'Загляните чуть позже.'}
                         </Banner>
                     )}
 
@@ -363,7 +420,8 @@ return;
                                     {table.label ? ` (${table.label})` : ''}
                                 </p>
                                 <p className="mt-1 text-xs text-emerald-800">
-                                    Принесём заказ прямо к вам — никаких адресов и доставки не нужно.
+                                    Принесём заказ прямо к вам — никаких адресов
+                                    и доставки не нужно.
                                 </p>
                             </div>
                         </Section>
@@ -371,21 +429,34 @@ return;
                         <Section title="Способ получения">
                             <div className="grid grid-cols-2 gap-2">
                                 <TabButton
-                                    active={form.data.delivery_type === 'delivery'}
-                                    onClick={() => form.setData('delivery_type', 'delivery')}
+                                    active={
+                                        form.data.delivery_type === 'delivery'
+                                    }
+                                    onClick={() =>
+                                        form.setData(
+                                            'delivery_type',
+                                            'delivery',
+                                        )
+                                    }
                                     disabled={zones.length === 0}
                                 >
                                     Доставка
                                 </TabButton>
                                 <TabButton
-                                    active={form.data.delivery_type === 'pickup'}
-                                    onClick={() => form.setData('delivery_type', 'pickup')}
+                                    active={
+                                        form.data.delivery_type === 'pickup'
+                                    }
+                                    onClick={() =>
+                                        form.setData('delivery_type', 'pickup')
+                                    }
                                 >
                                     Самовывоз
                                 </TabButton>
                             </div>
                             {form.errors.delivery_type && (
-                                <p className="mt-2 text-xs text-rose-600">{form.errors.delivery_type}</p>
+                                <p className="mt-2 text-xs text-rose-600">
+                                    {form.errors.delivery_type}
+                                </p>
                             )}
                         </Section>
                     )}
@@ -399,7 +470,9 @@ return;
                                     </label>
                                     <div className="grid gap-2">
                                         {saved_addresses.map((address) => {
-                                            const checked = selectedAddressId === address.id;
+                                            const checked =
+                                                selectedAddressId ===
+                                                address.id;
 
                                             return (
                                                 <label
@@ -415,15 +488,24 @@ return;
                                                         name="saved-address"
                                                         className="mt-1 size-4 accent-amber-500"
                                                         checked={checked}
-                                                        onChange={() => selectSavedAddress(address.id)}
+                                                        onChange={() =>
+                                                            selectSavedAddress(
+                                                                address.id,
+                                                            )
+                                                        }
                                                     />
                                                     <div className="text-sm">
-                                                        <p className="font-medium">{address.street}</p>
+                                                        <p className="font-medium">
+                                                            {address.street}
+                                                        </p>
                                                         <p className="text-xs text-stone-500">
                                                             {[
-                                                                address.apartment && `кв. ${address.apartment}`,
-                                                                address.entrance && `подъезд ${address.entrance}`,
-                                                                address.floor && `этаж ${address.floor}`,
+                                                                address.apartment &&
+                                                                    `кв. ${address.apartment}`,
+                                                                address.entrance &&
+                                                                    `подъезд ${address.entrance}`,
+                                                                address.floor &&
+                                                                    `этаж ${address.floor}`,
                                                             ]
                                                                 .filter(Boolean)
                                                                 .join(' · ')}
@@ -443,10 +525,16 @@ return;
                                                 type="radio"
                                                 name="saved-address"
                                                 className="size-4 accent-amber-500"
-                                                checked={selectedAddressId === 'new'}
-                                                onChange={() => selectSavedAddress('new')}
+                                                checked={
+                                                    selectedAddressId === 'new'
+                                                }
+                                                onChange={() =>
+                                                    selectSavedAddress('new')
+                                                }
                                             />
-                                            <span className="text-sm font-medium">+ Новый адрес</span>
+                                            <span className="text-sm font-medium">
+                                                + Новый адрес
+                                            </span>
                                         </label>
                                     </div>
                                 </div>
@@ -454,11 +542,14 @@ return;
 
                             <div>
                                 <label className="mb-1.5 block text-xs font-medium text-stone-700">
-                                    Зона <span className="text-rose-600">*</span>
+                                    Зона{' '}
+                                    <span className="text-rose-600">*</span>
                                 </label>
                                 <div className="grid gap-2">
                                     {zones.map((zone) => {
-                                        const checked = form.data.delivery.zone_id === zone.id;
+                                        const checked =
+                                            form.data.delivery.zone_id ===
+                                            zone.id;
 
                                         return (
                                             <label
@@ -476,26 +567,51 @@ return;
                                                         className="size-4 accent-amber-500"
                                                         checked={checked}
                                                         onChange={() =>
-                                                            form.setData('delivery', {
-                                                                ...form.data.delivery,
-                                                                zone_id: zone.id,
-                                                            })
+                                                            form.setData(
+                                                                'delivery',
+                                                                {
+                                                                    ...form.data
+                                                                        .delivery,
+                                                                    zone_id:
+                                                                        zone.id,
+                                                                },
+                                                            )
                                                         }
                                                     />
                                                     <div>
-                                                        <p className="text-sm font-medium">{zone.name}</p>
+                                                        <p className="text-sm font-medium">
+                                                            {zone.name}
+                                                        </p>
                                                         <p className="text-xs text-stone-500">
-                                                            Мин. {formatRub(zone.min_order_amount)} · {zone.estimated_minutes_min}–{zone.estimated_minutes_max} мин
+                                                            Мин.{' '}
+                                                            {formatRub(
+                                                                zone.min_order_amount,
+                                                            )}{' '}
+                                                            ·{' '}
+                                                            {
+                                                                zone.estimated_minutes_min
+                                                            }
+                                                            –
+                                                            {
+                                                                zone.estimated_minutes_max
+                                                            }{' '}
+                                                            мин
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <span className="text-sm font-semibold">{formatRub(zone.delivery_fee)}</span>
+                                                <span className="text-sm font-semibold">
+                                                    {formatRub(
+                                                        zone.delivery_fee,
+                                                    )}
+                                                </span>
                                             </label>
                                         );
                                     })}
                                 </div>
                                 {form.errors['delivery.zone_id'] && (
-                                    <p className="mt-1.5 text-xs text-rose-600">{form.errors['delivery.zone_id']}</p>
+                                    <p className="mt-1.5 text-xs text-rose-600">
+                                        {form.errors['delivery.zone_id']}
+                                    </p>
                                 )}
                             </div>
 
@@ -504,7 +620,10 @@ return;
                                 required
                                 value={form.data.delivery.street}
                                 onChange={(v) =>
-                                    form.setData('delivery', { ...form.data.delivery, street: v })
+                                    form.setData('delivery', {
+                                        ...form.data.delivery,
+                                        street: v,
+                                    })
                                 }
                                 error={form.errors['delivery.street']}
                                 placeholder="Тверская ул., 1"
@@ -514,28 +633,40 @@ return;
                                     label="Кв."
                                     value={form.data.delivery.apartment}
                                     onChange={(v) =>
-                                        form.setData('delivery', { ...form.data.delivery, apartment: v })
+                                        form.setData('delivery', {
+                                            ...form.data.delivery,
+                                            apartment: v,
+                                        })
                                     }
                                 />
                                 <Field
                                     label="Подъезд"
                                     value={form.data.delivery.entrance}
                                     onChange={(v) =>
-                                        form.setData('delivery', { ...form.data.delivery, entrance: v })
+                                        form.setData('delivery', {
+                                            ...form.data.delivery,
+                                            entrance: v,
+                                        })
                                     }
                                 />
                                 <Field
                                     label="Этаж"
                                     value={form.data.delivery.floor}
                                     onChange={(v) =>
-                                        form.setData('delivery', { ...form.data.delivery, floor: v })
+                                        form.setData('delivery', {
+                                            ...form.data.delivery,
+                                            floor: v,
+                                        })
                                     }
                                 />
                                 <Field
                                     label="Домофон"
                                     value={form.data.delivery.intercom}
                                     onChange={(v) =>
-                                        form.setData('delivery', { ...form.data.delivery, intercom: v })
+                                        form.setData('delivery', {
+                                            ...form.data.delivery,
+                                            intercom: v,
+                                        })
                                     }
                                 />
                             </div>
@@ -543,7 +674,10 @@ return;
                                 label="Инструкции курьеру"
                                 value={form.data.delivery.instructions}
                                 onChange={(v) =>
-                                    form.setData('delivery', { ...form.data.delivery, instructions: v })
+                                    form.setData('delivery', {
+                                        ...form.data.delivery,
+                                        instructions: v,
+                                    })
                                 }
                                 placeholder="Позвонить за 10 минут"
                             />
@@ -552,7 +686,7 @@ return;
 
                     <Section title="Оплата">
                         <div className="grid gap-2">
-                            {(['cash', 'card_courier', 'card_online'] as const).map((method) => (
+                            {paymentMethods.map((method) => (
                                 <label
                                     key={method}
                                     className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
@@ -565,10 +699,19 @@ return;
                                         type="radio"
                                         name="payment"
                                         className="size-4 accent-amber-500"
-                                        checked={form.data.payment_method === method}
-                                        onChange={() => form.setData('payment_method', method)}
+                                        checked={
+                                            form.data.payment_method === method
+                                        }
+                                        onChange={() =>
+                                            form.setData(
+                                                'payment_method',
+                                                method,
+                                            )
+                                        }
                                     />
-                                    <span className="text-sm">{paymentLabel(method)}</span>
+                                    <span className="text-sm">
+                                        {paymentLabel(method)}
+                                    </span>
                                 </label>
                             ))}
                         </div>
@@ -582,11 +725,16 @@ return;
                                         <Gift className="mt-0.5 size-5 shrink-0 text-amber-600" />
                                         <div>
                                             <p className="text-sm font-semibold text-stone-900">
-                                                Доступно {formatRub(loyalty.balance)} бонусов
+                                                Доступно{' '}
+                                                {formatRub(loyalty.balance)}{' '}
+                                                бонусов
                                             </p>
                                             <p className="text-xs text-stone-600">
-                                                Можно списать до {formatRub(bonusCap)} в этом заказе
-                                                ({loyalty.max_spend_percent}% от стоимости товаров).
+                                                Можно списать до{' '}
+                                                {formatRub(bonusCap)} в этом
+                                                заказе (
+                                                {loyalty.max_spend_percent}% от
+                                                стоимости товаров).
                                             </p>
                                         </div>
                                     </div>
@@ -600,22 +748,35 @@ return;
                                         step={1}
                                         value={form.data.bonus_to_use || ''}
                                         onChange={(e) => {
-                                            const value = Math.max(0, Math.min(bonusCap, Number(e.target.value || 0)));
+                                            const value = Math.max(
+                                                0,
+                                                Math.min(
+                                                    bonusCap,
+                                                    Number(e.target.value || 0),
+                                                ),
+                                            );
                                             form.setData('bonus_to_use', value);
                                         }}
                                         placeholder="0"
-                                        className="flex-1 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                                        className="flex-1 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 focus:outline-none"
                                     />
                                     <button
                                         type="button"
-                                        onClick={() => form.setData('bonus_to_use', bonusCap)}
+                                        onClick={() =>
+                                            form.setData(
+                                                'bonus_to_use',
+                                                bonusCap,
+                                            )
+                                        }
                                         className="rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800"
                                     >
                                         Максимум
                                     </button>
                                 </div>
                                 {form.errors.bonus_to_use && (
-                                    <p className="mt-1.5 text-xs text-rose-600">{form.errors.bonus_to_use}</p>
+                                    <p className="mt-1.5 text-xs text-rose-600">
+                                        {form.errors.bonus_to_use}
+                                    </p>
                                 )}
                             </div>
                         </Section>
@@ -627,12 +788,17 @@ return;
                                 <div className="flex items-start gap-2">
                                     <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
                                     <div>
-                                        <p className="text-sm font-semibold text-emerald-900">{appliedPromo.code}</p>
+                                        <p className="text-sm font-semibold text-emerald-900">
+                                            {appliedPromo.code}
+                                        </p>
                                         {appliedPromo.description && (
-                                            <p className="text-xs text-emerald-800">{appliedPromo.description}</p>
+                                            <p className="text-xs text-emerald-800">
+                                                {appliedPromo.description}
+                                            </p>
                                         )}
                                         <p className="mt-0.5 text-xs text-emerald-700">
-                                            Скидка {formatRub(appliedPromo.discount)}
+                                            Скидка{' '}
+                                            {formatRub(appliedPromo.discount)}
                                         </p>
                                     </div>
                                 </div>
@@ -652,7 +818,9 @@ return;
                                         type="text"
                                         value={promoInput}
                                         onChange={(e) => {
-                                            setPromoInput(e.target.value.toUpperCase());
+                                            setPromoInput(
+                                                e.target.value.toUpperCase(),
+                                            );
                                             setPromoError(null);
                                         }}
                                         onKeyDown={(e) => {
@@ -662,18 +830,24 @@ return;
                                             }
                                         }}
                                         placeholder="WELCOME10"
-                                        className="flex-1 rounded-xl border border-stone-200 px-3 py-2.5 text-sm uppercase tracking-wider focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                                        className="flex-1 rounded-xl border border-stone-200 px-3 py-2.5 text-sm tracking-wider uppercase focus:border-amber-400 focus:ring-2 focus:ring-amber-100 focus:outline-none"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => void applyPromo()}
-                                        disabled={promoLoading || !promoInput.trim()}
+                                        disabled={
+                                            promoLoading || !promoInput.trim()
+                                        }
                                         className="rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-50"
                                     >
                                         {promoLoading ? '…' : 'Применить'}
                                     </button>
                                 </div>
-                                {promoError && <p className="mt-1.5 text-xs text-rose-600">{promoError}</p>}
+                                {promoError && (
+                                    <p className="mt-1.5 text-xs text-rose-600">
+                                        {promoError}
+                                    </p>
+                                )}
                             </div>
                         )}
                     </Section>
@@ -681,10 +855,12 @@ return;
                     <Section title="Комментарий">
                         <textarea
                             value={form.data.customer_comment}
-                            onChange={(e) => form.setData('customer_comment', e.target.value)}
+                            onChange={(e) =>
+                                form.setData('customer_comment', e.target.value)
+                            }
                             rows={3}
                             placeholder="Пожелания к заказу"
-                            className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                            className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 focus:outline-none"
                         />
                     </Section>
 
@@ -700,21 +876,30 @@ return;
                         <h3 className="text-base font-semibold">Ваш заказ</h3>
                         <ul className="mt-3 divide-y divide-stone-100 text-sm">
                             {lines.map((line) => (
-                                <li key={line.id} className="flex justify-between gap-3 py-2.5">
+                                <li
+                                    key={line.id}
+                                    className="flex justify-between gap-3 py-2.5"
+                                >
                                     <div>
                                         <p className="font-medium text-stone-900">
                                             {line.product_name}{' '}
-                                            <span className="text-stone-400">× {line.quantity}</span>
+                                            <span className="text-stone-400">
+                                                × {line.quantity}
+                                            </span>
                                         </p>
                                         {line.modifiers.length > 0 && (
                                             <p className="text-xs text-stone-500">
-                                                {line.modifiers.map((m) => m.name).join(', ')}
+                                                {line.modifiers
+                                                    .map((m) => m.name)
+                                                    .join(', ')}
                                             </p>
                                         )}
                                     </div>
                                     <span className="shrink-0 font-medium">
                                         {formatRub(
-                                            (line.unit_price + line.modifiers_total_per_unit) * line.quantity,
+                                            (line.unit_price +
+                                                line.modifiers_total_per_unit) *
+                                                line.quantity,
                                         )}
                                     </span>
                                 </li>
@@ -724,7 +909,14 @@ return;
                         <dl className="mt-4 space-y-1.5 border-t border-stone-100 pt-4 text-sm">
                             <Row label="Товары" value={formatRub(subtotal)} />
                             {form.data.delivery_type === 'delivery' && (
-                                <Row label="Доставка" value={selectedZone ? formatRub(deliveryFee) : '—'} />
+                                <Row
+                                    label="Доставка"
+                                    value={
+                                        selectedZone
+                                            ? formatRub(deliveryFee)
+                                            : '—'
+                                    }
+                                />
                             )}
                             {appliedPromo && (
                                 <Row
@@ -734,24 +926,37 @@ return;
                                 />
                             )}
                             {bonusUsed > 0 && (
-                                <Row label="Бонусы" value={`−${formatRub(bonusUsed)}`} accent="success" />
+                                <Row
+                                    label="Бонусы"
+                                    value={`−${formatRub(bonusUsed)}`}
+                                    accent="success"
+                                />
                             )}
                             <Row label="Итого" value={formatRub(total)} bold />
                         </dl>
 
                         {belowZoneMin && (
                             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
-                                Минимум для зоны «{selectedZone?.name}» — {formatRub(zoneMin)}.
+                                Минимум для зоны «{selectedZone?.name}» —{' '}
+                                {formatRub(zoneMin)}.
                             </p>
                         )}
 
                         <button
                             type="submit"
                             onClick={handleSubmit}
-                            disabled={form.processing || !!belowZoneMin || !establishment.accepting_orders}
+                            disabled={
+                                form.processing ||
+                                !!belowZoneMin ||
+                                !establishment.accepting_orders
+                            }
                             className="mt-4 w-full rounded-full bg-stone-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-stone-800 disabled:opacity-50"
                         >
-                            {form.processing ? 'Отправляем…' : `Оформить · ${formatRub(total)}`}
+                            {form.processing
+                                ? 'Отправляем…'
+                                : form.data.payment_method === 'card_online'
+                                  ? `Оплатить · ${formatRub(total)}`
+                                  : `Оформить · ${formatRub(total)}`}
                         </button>
                     </div>
                 </aside>
@@ -766,20 +971,27 @@ function EmptyCheckout() {
             <div className="max-w-md text-center">
                 <ShoppingBag className="mx-auto size-12 text-stone-300" />
                 <h1 className="mt-4 text-xl font-semibold">Корзина пуста</h1>
-                <p className="mt-2 text-sm text-stone-500">Выберите блюда в меню и вернитесь сюда.</p>
+                <p className="mt-2 text-sm text-stone-500">
+                    Выберите блюда в меню и вернитесь сюда.
+                </p>
                 <Link
                     href="/"
                     className="mt-6 inline-flex items-center gap-2 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-stone-800"
                 >
-                    <ArrowLeft className="size-4" />
-                    К меню
+                    <ArrowLeft className="size-4" />К меню
                 </Link>
             </div>
         </main>
     );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+    title,
+    children,
+}: {
+    title: string;
+    children: React.ReactNode;
+}) {
     return (
         <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-base font-semibold">{title}</h2>
@@ -816,7 +1028,7 @@ function Field({
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${
+                className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none ${
                     error
                         ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
                         : 'border-stone-200 focus:border-amber-400 focus:ring-amber-100'
@@ -844,7 +1056,9 @@ function TabButton({
             onClick={onClick}
             disabled={disabled}
             className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
-                active ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                active
+                    ? 'bg-stone-900 text-white'
+                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
             } disabled:cursor-not-allowed disabled:opacity-50`}
         >
             {children}
@@ -866,8 +1080,8 @@ function Row({
     const cls = bold
         ? 'text-base font-semibold text-stone-900'
         : accent === 'success'
-            ? 'text-emerald-700'
-            : 'text-stone-600';
+          ? 'text-emerald-700'
+          : 'text-stone-600';
 
     return (
         <div className={`flex justify-between ${cls}`}>

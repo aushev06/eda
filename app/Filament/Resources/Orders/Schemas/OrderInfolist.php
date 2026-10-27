@@ -3,10 +3,12 @@
 namespace App\Filament\Resources\Orders\Schemas;
 
 use App\Enums\DeliveryType;
+use App\Enums\OnlinePaymentStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Models\Order;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -113,6 +115,30 @@ class OrderInfolist
                             ->color('success')
                             ->visible(fn (Order $record) => (float) $record->bonus_earned_amount > 0),
                         TextEntry::make('total')->label('Итого')->money('RUB')->weight('bold')->size('lg')->columnSpan(2),
+                    ]),
+
+                Section::make('Онлайн-оплата')
+                    ->visible(fn (Order $record) => $record->onlinePayments()->exists())
+                    ->schema([
+                        RepeatableEntry::make('onlinePayments')
+                            ->hiddenLabel()
+                            ->columns(5)
+                            ->schema([
+                                TextEntry::make('created_at')->label('Попытка')->dateTime('d.m H:i'),
+                                TextEntry::make('gateway')->label('Сервис'),
+                                TextEntry::make('status')
+                                    ->label('Статус')
+                                    ->badge()
+                                    ->formatStateUsing(fn (OnlinePaymentStatus $state) => $state->label())
+                                    ->color(fn (OnlinePaymentStatus $state) => $state->color()),
+                                TextEntry::make('amount')->label('Сумма')->money('RUB'),
+                                TextEntry::make('external_id')->label('ID в банке')->copyable()->placeholder('—'),
+                                TextEntry::make('error_message')
+                                    ->label('Ошибка')
+                                    ->color('danger')
+                                    ->columnSpanFull()
+                                    ->visible(fn (?string $state) => filled($state)),
+                            ]),
                     ]),
 
                 Section::make('Хронология')

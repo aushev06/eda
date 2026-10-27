@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\DeliveryType;
 use App\Enums\PaymentMethod;
 use App\Rules\Phone as PhoneRule;
+use App\Services\Payments\PaymentGatewayManager;
 use App\Support\Phone;
 use App\Support\Settings;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -55,11 +56,7 @@ class StoreOrderRequest extends FormRequest
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_phone' => ['required', 'string', new PhoneRule],
             'delivery_type' => ['required', Rule::enum(DeliveryType::class)],
-            'payment_method' => ['required', Rule::in([
-                PaymentMethod::Cash->value,
-                PaymentMethod::CardOnline->value,
-                PaymentMethod::CardCourier->value,
-            ])],
+            'payment_method' => ['required', Rule::in($this->allowedPaymentMethods())],
             'customer_comment' => ['nullable', 'string', 'max:1000'],
             'promo_code' => ['nullable', 'string', 'max:64'],
             'bonus_to_use' => ['nullable', 'numeric', 'min:0'],
@@ -80,6 +77,22 @@ class StoreOrderRequest extends FormRequest
             'delivery.intercom' => ['nullable', 'string', 'max:32'],
             'delivery.instructions' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    /**
+     * Online card payment is offered only while a gateway is connected.
+     *
+     * @return list<string>
+     */
+    protected function allowedPaymentMethods(): array
+    {
+        $methods = [PaymentMethod::Cash->value, PaymentMethod::CardCourier->value];
+
+        if (app(PaymentGatewayManager::class)->isOnlinePaymentAvailable()) {
+            $methods[] = PaymentMethod::CardOnline->value;
+        }
+
+        return $methods;
     }
 
     /**

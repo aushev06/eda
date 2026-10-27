@@ -5,9 +5,11 @@ use App\Http\Controllers\Customer\AccountController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\NotificationsController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\PromoController;
 use App\Http\Controllers\TableController;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [CatalogController::class, 'index'])->name('home');
@@ -18,6 +20,19 @@ Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
 Route::get('/orders/{number}/thanks', [OrderController::class, 'thanks'])
     ->where('number', 'A-[A-Z0-9]+')
     ->name('orders.thanks');
+
+// Online payment: start or retry, return from the gateway, gateway webhooks
+Route::post('/orders/{number}/pay', [PaymentController::class, 'pay'])
+    ->where('number', 'A-[A-Z0-9]+')
+    ->middleware('throttle:10,1')
+    ->name('orders.pay');
+Route::get('/orders/{number}/payment', [PaymentController::class, 'return'])
+    ->where('number', 'A-[A-Z0-9]+')
+    ->name('orders.payment.return');
+Route::match(['get', 'post'], '/payments/{gateway}/webhook', [PaymentController::class, 'webhook'])
+    ->where('gateway', '[a-z0-9_-]+')
+    ->withoutMiddleware(PreventRequestForgery::class)
+    ->name('payments.webhook');
 
 Route::post('/promo-codes/validate', [PromoController::class, 'validateCode'])->name('promo.validate');
 
