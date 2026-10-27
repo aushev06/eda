@@ -19,13 +19,20 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
  * from admin pages.
  */
 function syncDarkClass(component: string | undefined) {
-    const isCustomer = !!component && (component.startsWith('catalog/') || component.startsWith('account/') || component.startsWith('pos/'));
+    const isCustomer =
+        !!component &&
+        (component.startsWith('catalog/') ||
+            component.startsWith('account/') ||
+            component.startsWith('pos/') ||
+            component.startsWith('pos-v2/'));
 
     if (isCustomer) {
         document.documentElement.classList.remove('dark');
     } else {
         // Re-apply system preference for admin pages.
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const prefersDark = window.matchMedia(
+            '(prefers-color-scheme: dark)',
+        ).matches;
         document.documentElement.classList.toggle('dark', prefersDark);
     }
 }
@@ -41,6 +48,8 @@ createInertiaApp({
             case name.startsWith('account/'):
                 return null;
             case name.startsWith('pos/'):
+                return null;
+            case name.startsWith('pos-v2/'):
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;

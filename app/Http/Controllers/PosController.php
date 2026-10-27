@@ -35,6 +35,14 @@ use Inertia\Response;
 
 class PosController extends Controller
 {
+    /**
+     * Inertia page directory and route name prefix of this POS edition, so
+     * the redesigned v2 screens can reuse every action unchanged.
+     */
+    protected string $pageDirectory = 'pos';
+
+    protected string $routePrefix = 'pos.';
+
     public function index(): Response
     {
         $tables = Table::query()
@@ -42,7 +50,7 @@ class PosController extends Controller
             ->orderBy('number')
             ->get(['id', 'number', 'label']);
 
-        return Inertia::render('pos/index', [
+        return Inertia::render($this->page('index'), [
             'categories' => $this->catalog(),
             'tables' => $tables,
             'establishment_name' => Settings::get('general.name'),
@@ -84,7 +92,7 @@ class PosController extends Controller
     {
         $station = Station::from($station);
 
-        return Inertia::render('pos/kds', [
+        return Inertia::render($this->page('kds'), [
             'station' => $station->value,
             'station_label' => $station->label(),
             'tickets' => $tickets->handle($station),
@@ -133,7 +141,7 @@ class PosController extends Controller
                 ];
             });
 
-        return Inertia::render('pos/tables', [
+        return Inertia::render($this->page('tables'), [
             'tables' => $floor,
             'establishment_name' => Settings::get('general.name'),
         ]);
@@ -146,7 +154,7 @@ class PosController extends Controller
     {
         $order = $open->handle($table, auth()->user());
 
-        return Inertia::render('pos/check', [
+        return Inertia::render($this->page('check'), [
             'table' => ['id' => $table->id, 'number' => $table->number, 'label' => $table->label],
             'categories' => $this->catalog(),
             'check' => $this->serializeCheck($order),
@@ -175,9 +183,14 @@ class PosController extends Controller
     {
         $order = $action->handle($order, $request->validated()['tenders'], auth()->user());
 
-        return redirect()->route('pos.tables')
+        return redirect()->route($this->routePrefix.'tables')
             ->with('closed_order_number', $order->number)
             ->with('change_due', $order->changeDue());
+    }
+
+    protected function page(string $name): string
+    {
+        return $this->pageDirectory.'/'.$name;
     }
 
     /**
