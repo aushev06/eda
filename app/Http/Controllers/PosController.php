@@ -46,6 +46,7 @@ class PosController extends Controller
             'categories' => $this->catalog(),
             'tables' => $tables,
             'establishment_name' => Settings::get('general.name'),
+            'card_terminal' => Settings::cardTerminal(),
         ]);
     }
 
@@ -150,6 +151,7 @@ class PosController extends Controller
             'table' => ['id' => $table->id, 'number' => $table->number, 'label' => $table->label],
             'categories' => $this->catalog(),
             'check' => $this->serializeCheck($order),
+            'card_terminal' => Settings::cardTerminal(),
             'payment_methods' => [
                 ['value' => PaymentMethod::Cash->value, 'label' => 'Наличные'],
                 ['value' => PaymentMethod::CardOnline->value, 'label' => 'Карта'],

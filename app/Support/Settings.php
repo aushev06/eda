@@ -64,6 +64,26 @@ class Settings
     }
 
     /**
+     * Connection to the local card terminal agent for the POS screens, or
+     * null when the integration is off or has no token yet.
+     *
+     * @return array{url: string, token: string}|null
+     */
+    public static function cardTerminal(): ?array
+    {
+        $token = (string) static::get('terminal.token', '');
+
+        if (! static::get('terminal.enabled', false) || $token === '') {
+            return null;
+        }
+
+        return [
+            'url' => rtrim((string) static::get('terminal.agent_url'), '/'),
+            'token' => $token,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function defaults(): array
@@ -84,6 +104,9 @@ class Settings
             'social.instagram' => '',
             'loyalty.enabled' => true,
             'loyalty.max_spend_percent_per_order' => 30,
+            'terminal.enabled' => false,
+            'terminal.agent_url' => 'http://localhost:8765',
+            'terminal.token' => '',
         ];
     }
 }

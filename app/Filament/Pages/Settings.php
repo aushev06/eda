@@ -22,6 +22,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Str;
 
 /**
  * @property-read Schema $form
@@ -83,6 +84,12 @@ class Settings extends Page implements HasForms
                 'telegram' => SettingsHelper::get('social.telegram', ''),
                 'vk' => SettingsHelper::get('social.vk', ''),
                 'instagram' => SettingsHelper::get('social.instagram', ''),
+            ],
+            'terminal' => [
+                'enabled' => (bool) SettingsHelper::get('terminal.enabled', false),
+                'agent_url' => SettingsHelper::get('terminal.agent_url', $defaults['terminal.agent_url']),
+                // Pre-fill a token so the first save already pairs the agent.
+                'token' => SettingsHelper::get('terminal.token') ?: Str::random(32),
             ],
             'working_hours' => $workingHours,
         ]);
@@ -180,6 +187,25 @@ class Settings extends Page implements HasForms
                                     ->all()
                             ),
 
+                        Tab::make('Терминал оплаты')
+                            ->icon('heroicon-o-credit-card')
+                            ->schema([
+                                Toggle::make('terminal.enabled')
+                                    ->label('Передавать сумму на банковский терминал')
+                                    ->helperText('Терминал Сбера, подключённый к кассовому компьютеру через программу «Пилот». На этом компьютере должна быть запущена программа связи с терминалом (deploy/sber-terminal).'),
+                                TextInput::make('terminal.agent_url')
+                                    ->label('Адрес программы связи')
+                                    ->url()
+                                    ->required()
+                                    ->maxLength(255),
+                                TextInput::make('terminal.token')
+                                    ->label('Токен')
+                                    ->helperText('Тот же токен укажите при запуске программы связи. Без него программа не примет запрос.')
+                                    ->required()
+                                    ->minLength(16)
+                                    ->maxLength(64),
+                            ]),
+
                         Tab::make('Соцсети')
                             ->icon('heroicon-o-link')
                             ->schema([
@@ -207,7 +233,7 @@ class Settings extends Page implements HasForms
         $data = $this->form->getState();
 
         $flat = [];
-        foreach (['general', 'mode', 'orders', 'social'] as $group) {
+        foreach (['general', 'mode', 'orders', 'social', 'terminal'] as $group) {
             foreach (($data[$group] ?? []) as $key => $value) {
                 $flat["$group.$key"] = $value;
             }
