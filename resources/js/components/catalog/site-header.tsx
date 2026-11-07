@@ -1,6 +1,7 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { Gift, Hash, ShoppingBag, User, X } from 'lucide-react';
 import { useCart } from '@/hooks/catalog/use-cart';
+import * as tableRoutes from '@/routes/table';
 import type { Establishment } from '@/types/catalog';
 import { NotificationsBell } from './notifications-bell';
 
