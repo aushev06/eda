@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Actions\Pos\ResolveTableGuest;
 use App\Models\CustomerNotification;
 use App\Models\Table;
 use Illuminate\Http\Request;
@@ -114,6 +115,7 @@ class HandleInertiaRequests extends Middleware
             'id' => $table->id,
             'number' => $table->number,
             'label' => $table->label,
+            'is_guest' => app(ResolveTableGuest::class)->handle($request) !== null,
         ];
     }
 }

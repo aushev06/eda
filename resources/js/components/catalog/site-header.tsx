@@ -45,8 +45,10 @@ export function SiteHeader({ establishment }: Props) {
                             className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20"
                             title={table.label ? `${table.label}` : undefined}
                         >
-                            <Hash className="size-3.5" />
-                            Столик {table.number}
+                            <Link href={tableRoutes.show.url()} className="inline-flex items-center gap-1.5">
+                                <Hash className="size-3.5" />
+                                Столик {table.number}
+                            </Link>
                             <button
                                 type="button"
                                 onClick={leaveTable}

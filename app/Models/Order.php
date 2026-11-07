@@ -52,6 +52,8 @@ class Order extends Model
         'customer_comment',
         'scheduled_for',
         'opened_at',
+        'guest_pin',
+        'guest_channel_token',
         'paid_at',
         'accepted_at',
         'ready_at',
@@ -60,6 +62,17 @@ class Order extends Model
         'cancellation_reason',
         'promo_code',
         'promo_code_id',
+    ];
+
+    /**
+     * Never serialized: the order-thanks page sends the whole model to the
+     * browser, and either value would open the table to anyone holding it.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'guest_pin',
+        'guest_channel_token',
     ];
 
     protected function casts(): array
@@ -122,6 +135,11 @@ class Order extends Model
     public function statusEvents(): HasMany
     {
         return $this->hasMany(OrderStatusEvent::class)->orderBy('created_at');
+    }
+
+    public function guests(): HasMany
+    {
+        return $this->hasMany(TableGuest::class);
     }
 
     public function payments(): HasMany

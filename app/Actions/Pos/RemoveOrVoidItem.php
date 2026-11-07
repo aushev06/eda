@@ -3,6 +3,7 @@
 namespace App\Actions\Pos;
 
 use App\Events\PosTicketsUpdated;
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,9 @@ class RemoveOrVoidItem
         }
 
         DB::transaction(function () use ($item, $order, $alreadyMade, $reason) {
+            // Guests can add rounds concurrently: serialize the total recalculation.
+            Order::query()->whereKey($order->id)->lockForUpdate()->first();
+
             if ($alreadyMade) {
                 $item->update([
                     'voided_at' => now(),

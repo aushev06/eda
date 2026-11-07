@@ -8,6 +8,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\PromoController;
 use App\Http\Controllers\TableController;
+use App\Http\Controllers\TableGuestController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [CatalogController::class, 'index'])->name('home');
@@ -26,6 +27,17 @@ Route::get('/t/{token}', [TableController::class, 'enter'])
     ->where('token', '[a-z0-9]+')
     ->name('table.enter');
 Route::post('/t/leave', [TableController::class, 'leave'])->name('table.leave');
+
+// Shared table: guests join with the waiter's PIN and order into one check
+Route::prefix('table')->name('table.')->group(function () {
+    Route::get('/', [TableGuestController::class, 'show'])->name('show');
+    Route::post('/join', [TableGuestController::class, 'join'])
+        ->middleware('throttle:10,1')
+        ->name('join');
+    Route::post('/items', [TableGuestController::class, 'storeItems'])
+        ->middleware('throttle:30,1')
+        ->name('items');
+});
 
 // Customer auth (phone + OTP)
 Route::get('/account/login', [CustomerAuthController::class, 'login'])->name('customer.login');
@@ -64,6 +76,8 @@ Route::middleware(['auth', 'can:pos'])->prefix('pos')->name('pos.')->group(funct
     Route::get('/tables/{table}', [PosController::class, 'check'])->name('tables.check');
     Route::post('/orders/{order}/items', [PosController::class, 'addItems'])->name('orders.items');
     Route::delete('/order-items/{item}', [PosController::class, 'removeItem'])->name('order-items.remove');
+    Route::post('/orders/{order}/guest-ordering', [PosController::class, 'openGuestOrdering'])->name('orders.guest-ordering.open');
+    Route::delete('/orders/{order}/guest-ordering', [PosController::class, 'closeGuestOrdering'])->name('orders.guest-ordering.close');
     Route::post('/orders/{order}/close', [PosController::class, 'close'])->name('orders.close');
 
     Route::get('/{station}', [PosController::class, 'kds'])

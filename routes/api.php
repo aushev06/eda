@@ -15,6 +15,7 @@ Route::prefix('pos')->name('api.pos.')->group(function () {
         Route::post('/logout', [PosAuthController::class, 'logout'])->name('logout');
 
         Route::get('/catalog', [PosApiController::class, 'catalog'])->name('catalog');
+        Route::get('/printers', [PosApiController::class, 'printers'])->name('printers');
         Route::post('/quote', [PosApiController::class, 'quote'])->name('quote');
         Route::post('/orders', [PosApiController::class, 'store'])->name('orders.store');
 
@@ -23,6 +24,9 @@ Route::prefix('pos')->name('api.pos.')->group(function () {
         Route::get('/orders/{order}/check', [PosApiController::class, 'showCheck'])->name('orders.check');
         Route::post('/orders/{order}/items', [PosApiController::class, 'addItems'])->name('orders.items');
         Route::delete('/order-items/{item}', [PosApiController::class, 'removeItem'])->name('order-items.remove');
+        Route::post('/orders/{order}/move', [PosApiController::class, 'move'])->name('orders.move');
+        Route::post('/orders/{order}/guest-ordering', [PosApiController::class, 'openGuestOrdering'])->name('orders.guest-ordering.open');
+        Route::delete('/orders/{order}/guest-ordering', [PosApiController::class, 'closeGuestOrdering'])->name('orders.guest-ordering.close');
         Route::post('/orders/{order}/close', [PosApiController::class, 'close'])->name('orders.close');
 
         Route::get('/kds/{station}', [PosApiController::class, 'kds'])

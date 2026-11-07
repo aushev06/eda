@@ -8,7 +8,9 @@ use App\Actions\Pos\BuildFloorPlan;
 use App\Actions\Pos\BuildKdsTickets;
 use App\Actions\Pos\BuildPosCatalog;
 use App\Actions\Pos\BumpStationTicket;
+use App\Actions\Pos\CloseGuestOrdering;
 use App\Actions\Pos\CloseTableCheck;
+use App\Actions\Pos\OpenGuestOrdering;
 use App\Actions\Pos\OpenTableCheck;
 use App\Actions\Pos\PlacePosOrder;
 use App\Actions\Pos\RemoveOrVoidItem;
@@ -135,6 +137,20 @@ class PosController extends Controller
     public function removeItem(OrderItem $item, RemoveOrVoidItem $action): RedirectResponse
     {
         $action->handle($item, auth()->user(), request()->input('reason'));
+
+        return back();
+    }
+
+    public function openGuestOrdering(Order $order, OpenGuestOrdering $action): RedirectResponse
+    {
+        $action->handle($order);
+
+        return back();
+    }
+
+    public function closeGuestOrdering(Order $order, CloseGuestOrdering $action): RedirectResponse
+    {
+        $action->handle($order);
 
         return back();
     }
