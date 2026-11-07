@@ -7,6 +7,7 @@ use App\Http\Controllers\Customer\NotificationsController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\PosV2Controller;
 use App\Http\Controllers\PromoController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\TableGuestController;
@@ -94,6 +95,18 @@ Route::middleware(['auth', 'can:pos'])->prefix('pos')->name('pos.')->group(funct
     Route::post('/orders/{order}/guest-ordering', [PosController::class, 'openGuestOrdering'])->name('orders.guest-ordering.open');
     Route::delete('/orders/{order}/guest-ordering', [PosController::class, 'closeGuestOrdering'])->name('orders.guest-ordering.close');
     Route::post('/orders/{order}/close', [PosController::class, 'close'])->name('orders.close');
+
+    // v2: redesigned screens on the same actions. Registered before the
+    // station wildcard so "v2" is never mistaken for a station.
+    Route::prefix('v2')->name('v2.')->group(function () {
+        Route::get('/', [PosV2Controller::class, 'index'])->name('index');
+        Route::get('/tables', [PosV2Controller::class, 'tables'])->name('tables');
+        Route::get('/tables/{table}', [PosV2Controller::class, 'check'])->name('tables.check');
+        Route::post('/orders/{order}/close', [PosV2Controller::class, 'close'])->name('orders.close');
+        Route::get('/{station}', [PosV2Controller::class, 'kds'])
+            ->where('station', 'kitchen|bar')
+            ->name('kds');
+    });
 
     Route::get('/{station}', [PosController::class, 'kds'])
         ->where('station', 'kitchen|bar')
