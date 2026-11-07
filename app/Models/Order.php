@@ -147,6 +147,11 @@ class Order extends Model
         return $this->hasMany(OrderPayment::class);
     }
 
+    public function onlinePayments(): HasMany
+    {
+        return $this->hasMany(OnlinePayment::class);
+    }
+
     /**
      * Change owed to the guest: cash received beyond what cash covered on the
      * bill. Card tenders are exact and never produce change.

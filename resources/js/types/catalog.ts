@@ -73,6 +73,7 @@ export type Establishment = {
     accepting_orders: boolean;
     closed_reason: string | null;
     min_order_amount: number;
+    online_payment?: boolean;
 };
 
 export type CartLineModifier = {
