@@ -1,6 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import PaymentScreen from '@/components/pos/payment-screen';
+import type { CardTerminalConfig } from '@/lib/card-terminal';
 
 type PosModifier = {
     id: number;
@@ -47,6 +48,7 @@ type PageProps = {
     categories: PosCategory[];
     tables: PosTable[];
     establishment_name: string | null;
+    card_terminal: CardTerminalConfig | null;
     auth: { user: { name: string } | null };
     flash: { placed_order_number?: string | null };
 };
@@ -99,7 +101,7 @@ function ConfirmationToast({ number }: { number: string }) {
 }
 
 export default function PosIndex() {
-    const { categories, tables, establishment_name, auth, flash } = usePage<PageProps>().props;
+    const { categories, tables, establishment_name, card_terminal, auth, flash } = usePage<PageProps>().props;
 
     const [activeCategoryId, setActiveCategoryId] = useState<number | null>(categories[0]?.id ?? null);
     const [cart, setCart] = useState<CartLine[]>([]);
@@ -492,6 +494,7 @@ export default function PosIndex() {
             {paymentTotal !== null && (
                 <PaymentScreen
                     total={paymentTotal}
+                    terminal={card_terminal}
                     busy={submitting}
                     onSettle={(tenders) => submitOrder(tenders)}
                     onCancel={() => setPaymentTotal(null)}

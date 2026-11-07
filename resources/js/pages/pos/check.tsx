@@ -2,6 +2,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { useEcho } from '@laravel/echo-react';
 import { useMemo, useState } from 'react';
 import PaymentScreen from '@/components/pos/payment-screen';
+import type { CardTerminalConfig } from '@/lib/card-terminal';
 
 type Modifier = { id: number; name: string; price_delta: number };
 type ModifierGroup = { id: number; name: string; min_select: number; max_select: number; modifiers: Modifier[] };
@@ -33,6 +34,7 @@ type PageProps = {
     categories: Category[];
     check: Check;
     payment_methods: { value: string; label: string }[];
+    card_terminal: CardTerminalConfig | null;
 };
 
 type DraftLine = { key: string; product: Product; quantity: number; modifierIds: number[] };
@@ -48,7 +50,7 @@ function draftKey(productId: number, modifierIds: number[]): string {
 }
 
 export default function PosCheck() {
-    const { table, categories, check } = usePage<PageProps>().props;
+    const { table, categories, check, card_terminal } = usePage<PageProps>().props;
 
     const [activeCategoryId, setActiveCategoryId] = useState<number | null>(categories[0]?.id ?? null);
     const [draft, setDraft] = useState<DraftLine[]>([]);
@@ -454,6 +456,7 @@ return;
             {paying && (
                 <PaymentScreen
                     total={check.total}
+                    terminal={card_terminal}
                     busy={busy}
                     onSettle={(tenders) => closeTable(tenders)}
                     onCancel={() => setPaying(false)}
